@@ -15,4 +15,6 @@ export const config = {
   migrationsDir: join(here, "../migrations"),
   serverRoot: join(here, ".."),
   sessionDays: 30,
+  /** ADMIN_USERNAMES=alice,bob makes these accounts admins (at startup, and when they register) */
+  adminUsernames: (process.env.ADMIN_USERNAMES ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
 };

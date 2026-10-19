@@ -47,6 +47,7 @@ export function XpBar({ xp, required, label = true }: { xp: number; required: nu
 }
 
 export function FightPips({ left, total }: { left: number; total: number }) {
+  if (total > 30) return null; // admins can raise the daily limit; past this the "x of y left" text says it better
   return (
     <div className="pips" aria-label={`${left} of ${total} fights left today`}>
       {Array.from({ length: total }, (_, i) => <span key={i} className={i < left ? "pip on" : "pip"} />)}

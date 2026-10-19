@@ -3,6 +3,7 @@ import { join } from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
+import { adminRoutes } from "./admin";
 import { authPlugin, requireUser } from "./auth";
 import * as classic from "./classic";
 import type { Db } from "./db";
@@ -43,6 +44,8 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireUser(req).id));
   app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireUser(req).id, req.body); });
   app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireUser(req).id, req.params.id));
+
+  adminRoutes(app, db);
 
   app.all("/api/*", async (_req, reply) => reply.code(404).send({ error: "not_found", message: "Unknown API route." }));
 

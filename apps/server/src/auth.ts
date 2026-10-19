@@ -8,7 +8,8 @@ import { isUniqueViolation, withTx, type Db } from "./db";
 import { badRequest, conflict, forbidden, tooMany, unauthorized } from "./errors";
 import { PASSWORD_RULES, USERNAME_RULES } from "./rules";
 
-export interface SessionUser { id: string; username: string }
+export type Role = "player" | "admin";
+export interface SessionUser { id: string; username: string; role: Role }
 declare module "fastify" {
   interface FastifyRequest { user: SessionUser | null }
 }
@@ -79,8 +80,10 @@ export async function authPlugin(app: FastifyInstance, opts: { db: Db }) {
     }
     const token = req.cookies[SESSION_COOKIE];
     if (!token) return;
-    const r = await db.query<{ id: string; username: string }>(
-      "select u.id, u.username from sessions s join users u on u.id = s.user_id where s.token_hash = $1 and s.expires_at > now()",
+    // suspending drops the account's sessions; the check here also covers a suspension racing a request
+    const r = await db.query<SessionUser>(
+      `select u.id, u.username, u.role from sessions s join users u on u.id = s.user_id
+        where s.token_hash = $1 and s.expires_at > now() and u.suspended_at is null`,
       [tokenHash(token)],
     );
     req.user = r.rows[0] ?? null;
@@ -94,8 +97,10 @@ export async function authPlugin(app: FastifyInstance, opts: { db: Db }) {
     if (password.length < PASSWORD_RULES.min || password.length > PASSWORD_RULES.max) throw badRequest(`Passwords are at least ${PASSWORD_RULES.min} characters.`);
     const hash = await hashPassword(password);
     let id: string;
+    const role: Role = config.adminUsernames.includes(username.toLowerCase()) ? "admin" : "player";
     try {
-      id = (await db.query<{ id: string }>("insert into users (username, password_hash) values ($1, $2) returning id", [username, hash])).rows[0].id;
+      id = (await db.query<{ id: string }>(
+        "insert into users (username, password_hash, role, last_login_at) values ($1, $2, $3, now()) returning id", [username, hash, role])).rows[0].id;
     } catch (e) {
       if (isUniqueViolation(e)) throw conflict("That username is taken.", "username_taken");
       throw e;
@@ -103,22 +108,25 @@ export async function authPlugin(app: FastifyInstance, opts: { db: Db }) {
     const s = await createSession(db, id);
     setSessionCookie(reply, s.token, s.expires);
     reply.code(201);
-    return { user: { id, username } };
+    return { user: { id, username, role } };
   });
 
   app.post("/api/auth/login", async (req, reply) => {
     const { username, password } = readCredentials(req.body);
     const key = `${req.ip}|${username.toLowerCase()}`;
     checkThrottle(key);
-    const row = (await db.query<{ id: string; username: string; password_hash: string }>(
-      "select id, username, password_hash from users where lower(username) = lower($1)", [username])).rows[0];
+    const row = (await db.query<SessionUser & { password_hash: string; suspended_at: Date | null; suspend_reason: string | null }>(
+      "select id, username, role, password_hash, suspended_at, suspend_reason from users where lower(username) = lower($1)", [username])).rows[0];
     // verify against a dummy hash when the user doesn't exist, so timing doesn't reveal which usernames exist
     const ok = await verifyPassword(password, row?.password_hash ?? DUMMY_HASH);
     if (!row || !ok) { recordFailure(key); throw unauthorized("That username and password don't match."); }
     attempts.delete(key);
+    // checked only after the password matched, so suspensions don't reveal which usernames exist
+    if (row.suspended_at) throw forbidden(`This account is suspended${row.suspend_reason ? `: ${row.suspend_reason}` : "."}`, "suspended");
+    await db.query("update users set last_login_at = now() where id = $1", [row.id]);
     const s = await createSession(db, row.id);
     setSessionCookie(reply, s.token, s.expires);
-    return { user: { id: row.id, username: row.username } };
+    return { user: { id: row.id, username: row.username, role: row.role } };
   });
 
   app.post("/api/auth/logout", async (req, reply) => {

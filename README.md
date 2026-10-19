@@ -50,13 +50,35 @@ npm run start -w @mybrute/server               # applies migrations, then serves
 | `HOST`, `PORT` | where to listen (default 127.0.0.1:3001) |
 | `WEB_DIST` | built web app to serve (default `apps/web/dist`) |
 
-Game settings live in the `settings` table: `max_brutes_default` (brutes per account, default 5) and
-`daily_fights` (default 10). A single account can get its own limit through `users.max_brutes`.
+| `ADMIN_USERNAMES` | comma-separated usernames that are admins (applied at startup and when they register) |
 
-```sql
-update settings set value = '8' where key = 'max_brutes_default';
-update users set max_brutes = 20 where lower(username) = 'someone';
+## Admin tools
+
+Admins get an **Admin** link in the menu (`/admin`). Make the first one from the command line, after
+registering the account (uses `DATABASE_URL`, or the embedded development database when it's unset):
+
+```sh
+npm run admin -w @mybrute/server -- grant <username>    # also: revoke <username>, list
 ```
+
+| Page | What admins can do |
+|---|---|
+| Overview | Player, brute and fight counts, today's results, the highest levels, recent admin changes |
+| Players | Search; per player: make or remove admin, suspend (with a reason shown at sign-in) or lift it, set a brute limit, reset the password, sign out everywhere, delete the account |
+| Brutes | Search by name, id or owner; per brute: the full cell, set XP, give back today's fights, undo the last level-up, rename, move to another player, delete |
+| Fights | Every fight, filtered by result, brute, owner or opponent; watch any of them |
+| Settings | Brutes per player and fights per brute per day |
+| Log | Every admin change: who, what, when |
+
+Safeguards:
+- Every change is written to the log in the same transaction as the change.
+- Admins can't change, suspend, reset or delete their own account. Another admin's account has to lose
+  its admin role before it can be suspended or deleted.
+- Suspending ends the player's sessions. A suspended player only learns about the suspension after
+  entering the right password.
+- Admins can't edit stats or level-up choices; those always come from the original engine. "Undo the last
+  level-up" is exact: it refunds the XP, and the same two rewards come back, because offers depend only on
+  earlier choices.
 
 ## Classic rules
 

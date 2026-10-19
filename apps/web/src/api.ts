@@ -5,6 +5,14 @@ export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
+/** Builds a query string, leaving out empty values. */
+const qs = (q: Record<string, string | number | undefined | null>) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+};
+
 async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
@@ -22,7 +30,8 @@ async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?
   return data as T;
 }
 
-export interface User { id: string; username: string; bruteCount?: number; maxBrutes?: number }
+export type Role = "player" | "admin";
+export interface User { id: string; username: string; role: Role; bruteCount?: number; maxBrutes?: number }
 export interface Attributes { strength: number; agility: number; speed: number; life: number }
 export interface Kit { weapons: string[]; supers: string[]; followers: string[]; perms: string[]; talents: string[] }
 export type FightResult = "win" | "loss" | "draw";
@@ -73,4 +82,66 @@ export const api = {
   labBrutes: () => request<{ items: { key: string; label: string; brute: SpecBrute; savedAt: string }[] }>("GET", "/api/lab/brutes"),
   saveLabBrute: (label: string, brute: SpecBrute) => request<{ item: { key: string; label: string; brute: SpecBrute; savedAt: string } }>("POST", "/api/lab/brutes", { label, brute }),
   deleteLabBrute: (key: string) => request<{ ok: true }>("DELETE", `/api/lab/brutes/${key}`),
+};
+
+// ---------------------------------------------------------------- admin
+
+export interface Paged { total: number; page: number; pageSize: number }
+export interface Settings { maxBrutesDefault: number; dailyFights: number }
+export interface LogEntry {
+  id: string; at: string; admin: { id: string | null; username: string }; action: string;
+  target: { kind: "user" | "brute" | "settings"; id: string | null; label: string }; detail: Record<string, unknown>;
+}
+export interface AdminUser {
+  id: string; username: string; role: Role; maxBrutes: number | null; createdAt: string; lastLoginAt: string | null;
+  suspended: { at: string; reason: string | null } | null; brutes: number; fights: number;
+}
+export interface AdminUserDetail extends AdminUser { sessions: number; labPayloads: number; labBrutes: number; effectiveMaxBrutes: number }
+export interface AdminBrute {
+  id: string; name: string; seedId: number; gfx: string; level: number; xp: number; xpRequired: number; pendingLevelUp: boolean;
+  fightsLeft: number; fights: number; createdAt: string; owner: { id: string; username: string };
+}
+export interface AdminFight {
+  id: string; createdAt: string; result: FightResult; xpAwarded: number; events: number; level: number;
+  brute: { id: string; name: string }; owner: { id: string; username: string };
+  opponent: { name: string; level: number }; damageDealt: number; damageReceived: number;
+}
+export interface Overview {
+  counts: Record<"users" | "admins" | "suspended" | "newUsers" | "brutes" | "pendingLevelUps" | "fights" | "fightsToday" | "levelUps" | "sessions", number>;
+  resultsToday: Record<FightResult, number>;
+  topBrutes: { id: string; name: string; gfx: string; level: number; xp: number; owner: { id: string; username: string } }[];
+  settings: Settings; recentLog: LogEntry[]; day: string;
+}
+type Ok = { ok: true; changed?: boolean };
+
+export const admin = {
+  overview: () => request<Overview>("GET", "/api/admin/overview"),
+
+  users: (q: { q?: string; filter?: string; page?: number }) => request<Paged & { users: AdminUser[] }>("GET", `/api/admin/users${qs(q)}`),
+  user: (id: string) => request<{ user: AdminUserDetail; brutes: BruteSummary[]; log: LogEntry[] }>("GET", `/api/admin/users/${id}`),
+  setRole: (id: string, role: Role) => request<Ok>("POST", `/api/admin/users/${id}/role`, { role }),
+  suspend: (id: string, reason: string) => request<Ok>("POST", `/api/admin/users/${id}/suspend`, { reason }),
+  unsuspend: (id: string) => request<Ok>("POST", `/api/admin/users/${id}/unsuspend`),
+  setLimit: (id: string, maxBrutes: number | null) => request<Ok>("POST", `/api/admin/users/${id}/limit`, { maxBrutes }),
+  resetPassword: (id: string, password: string) => request<Ok>("POST", `/api/admin/users/${id}/password`, { password }),
+  signOut: (id: string) => request<Ok & { sessionsEnded: number }>("POST", `/api/admin/users/${id}/sign-out`),
+  deleteUser: (id: string) => request<Ok>("DELETE", `/api/admin/users/${id}`),
+
+  brutes: (q: { q?: string; filter?: string; sort?: string; owner?: string; page?: number }) =>
+    request<Paged & { brutes: AdminBrute[] }>("GET", `/api/admin/brutes${qs(q)}`),
+  brute: (id: string) => request<Cell & { owner: { id: string; username: string }; log: LogEntry[] }>("GET", `/api/admin/brutes/${id}`),
+  setXp: (id: string, xp: number) => request<Ok & { pendingLevelUp: boolean }>("POST", `/api/admin/brutes/${id}/xp`, { xp }),
+  resetFights: (id: string) => request<Ok>("POST", `/api/admin/brutes/${id}/reset-fights`),
+  rename: (id: string, name: string) => request<Ok>("POST", `/api/admin/brutes/${id}/rename`, { name }),
+  transfer: (id: string, username: string) => request<Ok>("POST", `/api/admin/brutes/${id}/transfer`, { username }),
+  undoLevelUp: (id: string) => request<Ok>("POST", `/api/admin/brutes/${id}/undo-level-up`),
+  deleteBrute: (id: string) => request<Ok>("DELETE", `/api/admin/brutes/${id}`),
+
+  fights: (q: { q?: string; result?: string; brute?: string; page?: number }) => request<Paged & { fights: AdminFight[] }>("GET", `/api/admin/fights${qs(q)}`),
+  fight: (id: string) => request<{ fight: FightDetail; brute: BruteSummary; owner: { id: string; username: string } }>("GET", `/api/admin/fights/${id}`),
+
+  settings: () => request<{ settings: Settings; limits: { maxBrutes: number; dailyFights: number; xp: number; reason: number } }>("GET", "/api/admin/settings"),
+  saveSettings: (s: Partial<Settings>) => request<{ settings: Settings }>("POST", "/api/admin/settings", s),
+
+  log: (q: { page?: number; kind?: string }) => request<Paged & { entries: LogEntry[] }>("GET", `/api/admin/log${qs(q)}`),
 };

@@ -4,12 +4,15 @@
    ===================================================================== */
 .account { display: inline-flex; align-items: center; gap: 10px; }
 .masthead nav a, .account { white-space: nowrap; }
+.nav-short { display: none; }
 /* phones: the masthead must fit 360px (it sets the page width) */
 @media (max-width: 699px) {
   .masthead { padding: 8px 12px; gap: 10px; }
   .wordmark { font-size: 21px; }
   .masthead nav { gap: 12px; font-size: 14px; }
   .account .muted { display: none; }
+  .nav-long { display: none; }
+  .nav-short { display: inline; }
 }
 @media (max-width: 380px) {
   .masthead { padding: 8px 10px; }

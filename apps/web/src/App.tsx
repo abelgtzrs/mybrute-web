@@ -1,4 +1,9 @@
 import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { AdminBrute, AdminBrutes } from "./admin/Brutes";
+import { AdminLayout, RequireAdmin } from "./admin/Layout";
+import { AdminOverview } from "./admin/Overview";
+import { AdminFights, AdminLog, AdminSettings } from "./admin/Pages";
+import { AdminPlayer, AdminPlayers } from "./admin/Players";
 import { RequireAuth, useAuth } from "./auth";
 import { LoginPage, RegisterPage } from "./classic/AuthPages";
 import { CellPage } from "./classic/Cell";
@@ -18,8 +23,9 @@ export function App() {
       <header className="masthead">
         <Link to="/" className="wordmark">MyBrute<span>++</span></Link>
         <nav aria-label="Main">
-          <NavLink to="/brutes">My brutes</NavLink>
-          <NavLink to="/lab">Laboratory</NavLink>
+          <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span></NavLink>
+          <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>
+          {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
           {user ? (
             <span className="account">
               <span className="muted">{user.username}</span>
@@ -43,6 +49,17 @@ export function App() {
           <Route path="/brutes/:id/level-up" element={<RequireAuth><LevelUpPage /></RequireAuth>} />
           <Route path="/brutes/:id/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
           <Route path="/fights/:fightId" element={<RequireAuth><FightPage /></RequireAuth>} />
+          <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
+            <Route index element={<AdminOverview />} />
+            <Route path="players" element={<AdminPlayers />} />
+            <Route path="players/:id" element={<AdminPlayer />} />
+            <Route path="brutes" element={<AdminBrutes />} />
+            <Route path="brutes/:id" element={<AdminBrute />} />
+            <Route path="fights" element={<AdminFights />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="log" element={<AdminLog />} />
+          </Route>
+          <Route path="/admin/fights/:fightId" element={<RequireAdmin><FightPage admin /></RequireAdmin>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

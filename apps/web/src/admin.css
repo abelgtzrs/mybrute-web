@@ -1,0 +1,118 @@
+/* =====================================================================
+   Admin pages. Same workbench and paper as Classic; the page never
+   scrolls, lists and panels scroll inside themselves.
+   ===================================================================== */
+.page.admin { grid-template-rows: auto minmax(0, 1fr); }
+.admin-tabs { display: flex; gap: 4px 18px; flex-wrap: wrap; }
+.admin-tabs a { color: var(--on-leather); text-decoration: none; font-weight: 800; padding: 4px 2px; border-bottom: 3px solid transparent; white-space: nowrap; }
+.admin-tabs a:hover { border-color: var(--on-leather-2); }
+.admin-tabs a.active { border-color: var(--gold); }
+
+.badge.suspended { background: var(--team1); color: #fff; }
+.admin-flash { margin: 0; font-weight: 800; color: var(--grass); }
+.admin-flash:empty { display: none; }
+.admin-empty { padding: 12px 4px; }
+.admin-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* lists */
+.admin-list { min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.admin-toolbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.admin-toolbar .row { margin: 0; }
+.admin-search { flex: 1 1 220px; max-width: 360px; }
+.admin-chip { display: inline-flex; gap: 8px; align-items: center; font-weight: 800; font-size: var(--t-small); padding: 4px 12px; border-radius: 999px; background: var(--gold-tint); border: 1.5px solid var(--gold); }
+.admin-chip .link { color: var(--team0-deep); font-weight: 800; }
+.admin-pager { margin: 0; justify-content: flex-end; }
+.admin-pager > .muted:first-child { margin-right: auto; }
+
+.admin-table { width: 100%; border-collapse: collapse; font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+.admin-table thead th { position: sticky; top: 0; z-index: 1; background: var(--paper); text-align: left; font-size: var(--t-meta); font-weight: 800; color: var(--ink-2); padding: 6px 8px; border-bottom: 1.5px solid var(--paper-edge); white-space: nowrap; }
+.admin-table td, .admin-table tbody th { padding: 6px 8px; border-bottom: 1px solid var(--paper-lo); text-align: left; font-weight: 600; white-space: nowrap; }
+.admin-table tbody th { font-weight: 800; }
+.admin-table tbody tr:hover { background: color-mix(in srgb, var(--paper-hi) 70%, transparent); }
+.admin-table thead th.num, .admin-table .num { text-align: right; }
+.admin-table a { color: var(--team0-deep); }
+.admin-table .badge { margin-left: 4px; vertical-align: 1px; }
+@media (max-width: 899px) { .admin-table .wide { display: none; } }
+
+/* overview */
+.admin-overview { min-height: 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.admin-counts-panel, .admin-top { min-height: 0; overflow-y: auto; }
+.admin-recent { grid-column: 1 / -1; min-height: 0; display: flex; flex-direction: column; }
+.admin-counts { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.admin-counts div { background: var(--paper-lo); border-radius: 10px; padding: 8px 12px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4); }
+.admin-counts dt { font-size: var(--t-meta); font-weight: 800; color: var(--ink-2); }
+.admin-counts dd { margin: 0; font: 30px/1.1 var(--font-display); color: var(--ink); }
+.admin-counts dd.small { font: 600 var(--t-meta)/1.3 var(--font-body); color: var(--ink-2); }
+.admin-counts a, .admin-counts-panel .hint a, .admin-settings a { color: var(--team0-deep); font-weight: 800; }
+.admin-rank, .admin-brute-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.admin-rank { counter-reset: rank; }
+.admin-rank li, .admin-brute-list li { display: grid; padding: 6px 10px; border-radius: 8px; background: var(--paper-lo); }
+.admin-rank li { grid-template-columns: 26px minmax(0, 1fr); column-gap: 6px; counter-increment: rank; }
+.admin-rank li::before { content: counter(rank); grid-row: span 2; align-self: center; font: 22px var(--font-display); color: var(--ink-3); }
+.admin-rank-name { font: 19px/1.15 var(--font-display); color: var(--ink); text-decoration: none; }
+.admin-rank-name:hover { color: var(--team0-deep); text-decoration: underline; }
+.admin-rank a:not(.admin-rank-name), .admin-brute-list a:not(.admin-rank-name) { color: var(--team0-deep); }
+
+/* log lines */
+.admin-log { list-style: none; margin: 0; padding: 0; display: grid; }
+.admin-log li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: baseline; padding: 7px 4px; border-bottom: 1px solid var(--paper-lo); font-size: var(--t-small); }
+.admin-log a { color: var(--team0-deep); font-weight: 800; }
+.admin-log time { white-space: nowrap; }
+@media (max-width: 599px) { .admin-log li { grid-template-columns: minmax(0, 1fr); } }
+
+/* player and brute pages */
+.admin-detail { min-height: 0; display: grid; gap: 14px; grid-template-columns: minmax(300px, 440px) minmax(0, 1fr); }
+.admin-brute { min-height: 0; display: grid; gap: 14px; grid-template-columns: minmax(240px, 290px) minmax(0, 1fr) minmax(320px, 1.1fr); }
+.admin-account, .admin-brute-kit { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.admin-brute-kit h2 { margin-bottom: 6px; }
+.admin-brute-kit .stat-row { margin-bottom: 10px; }
+.admin-detail-side { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+.admin-sub { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.admin-sub:has(.admin-actions) { flex: 0 1 auto; overflow-y: auto; overscroll-behavior: contain; }
+.admin-account-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-title { font: 30px/1.1 var(--font-display) !important; margin: 0 !important; overflow-wrap: anywhere; }
+.admin-account h3 { margin-top: 16px; }
+.admin-facts { margin: 10px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.admin-facts div { background: var(--paper-lo); border-radius: 8px; padding: 5px 10px; }
+.admin-facts dt { font-size: var(--t-meta); font-weight: 800; color: var(--ink-2); }
+.admin-facts dd { margin: 0; font-weight: 700; font-size: var(--t-small); }
+.cell-level a { color: var(--team0-deep); }
+
+.admin-actions { display: grid; }
+.admin-actions > .hint { margin: 0 0 6px; }
+.admin-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--paper-lo); }
+.admin-action:last-child { border-bottom: 0; }
+.admin-action > span { display: grid; min-width: 0; }
+.admin-action strong { font-size: var(--t-small); }
+
+/* settings */
+.admin-settings { align-self: start; justify-self: start; width: min(640px, 100%); max-height: 100%; overflow-y: auto; }
+.admin-settings-form { display: grid; gap: 16px; margin-bottom: 12px; }
+.admin-settings-form label { display: grid; gap: 4px; }
+.admin-settings-form input { max-width: 160px; }
+.admin-settings-form .hint { margin: 0; }
+.admin-field-name { font-weight: 800; }
+.admin-settings-form .row { margin: 0; }
+
+/* narrower screens: the detail pages become one scrolling column inside the page */
+@media (max-width: 1199px) {
+  /* stacked: rows take their content height and the whole area scrolls */
+  .admin-brute { grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
+  .admin-brute > .admin-detail-side { grid-column: 1 / -1; }
+  .admin-brute .admin-sub { flex: none; max-height: 420px; }
+}
+@media (max-width: 899px) {
+  .admin-overview { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
+  .admin-counts-panel, .admin-top, .admin-recent { overflow: visible; }
+  .admin-recent .admin-scroll { overflow: visible; }
+  .admin-detail { grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; overflow-y: auto; overscroll-behavior: contain; }
+  .admin-account { overflow: visible; }
+  .admin-detail .admin-sub { flex: none; max-height: 420px; }
+}
+@media (max-width: 699px) {
+  .admin-brute { grid-template-columns: minmax(0, 1fr); }
+  .admin-brute > * { overflow: visible; }
+  .admin-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page.admin .page-head h1 { font-size: 26px; }
+  .admin-tabs { gap: 2px 12px; font-size: 14px; }
+}

@@ -17,6 +17,9 @@ if (!url) {
 const db = createPool(url);
 const applied = await migrate(db);
 if (applied.length) console.log("Applied migrations:", applied.join(", "));
+if (config.adminUsernames.length) {
+  await db.query("update users set role = 'admin' where lower(username) = any($1) and role <> 'admin'", [config.adminUsernames]);
+}
 
 const app = await buildApp({ db, webDist: config.webDist, logger: true });
 await app.listen({ port: config.port, host: config.host });

@@ -9,7 +9,8 @@ export function ResultBadge({ result }: { result: FightResult }) {
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-export function FightRow({ f }: { f: FightListItem }) {
+/** `watch` changes where the Watch link goes (the admin pages play fights from their own address). */
+export function FightRow({ f, watch = `/fights/${f.id}` }: { f: FightListItem; watch?: string }) {
   return (
     <li className="fight-row">
       <ResultBadge result={f.result} />
@@ -17,7 +18,7 @@ export function FightRow({ f }: { f: FightListItem }) {
         <span>vs <strong>{f.opponent.name}</strong> <span className="muted">(level {f.opponent.level})</span></span>
         <span className="muted small">{when(f.createdAt)}, +{f.xpAwarded} XP, dealt {f.damageDealt}, took {f.damageReceived}</span>
       </span>
-      <Link to={`/fights/${f.id}`} className="btn small ghost">Watch</Link>
+      <Link to={watch} className="btn small ghost">Watch</Link>
     </li>
   );
 }

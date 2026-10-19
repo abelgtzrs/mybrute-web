@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { buildParams, type FighterStats } from "@mybrute/engine";
-import { api } from "../api";
+import { admin as adminApi, api } from "../api";
 import { swfUrl } from "../swf/ruffle";
 import { SwfPlayer } from "../swf/SwfPlayer";
 import { useSwfEnd } from "../swf/useSwfEnd";
@@ -11,10 +11,11 @@ import { useApi } from "../useApi";
 /**
  * Plays a recorded fight in the original client.swf. The result was decided and saved by the server
  * before this page opened; it stays hidden until playback ends (or the player skips).
+ * In admin mode it plays anyone's fight, and links lead back to the admin pages instead of the player's cell.
  */
-export function FightPage() {
+export function FightPage({ admin = false }: { admin?: boolean }) {
   const { fightId = "" } = useParams();
-  const { data, error } = useApi(() => api.getFight(fightId), [fightId]);
+  const { data, error } = useApi<FightData>(() => (admin ? adminApi.fight(fightId) : api.getFight(fightId)), [fightId, admin]);
   const [revealed, setRevealed] = useState(false);
   const [take, setTake] = useState(0);
   const endUrl = useSwfEnd(() => setRevealed(true));
@@ -26,15 +27,16 @@ export function FightPage() {
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data || !params) return <div className="page"><p className="page-status">Loading the fight…</p></div>;
   const { fight: f, brute: b } = data;
+  const back = admin ? `/admin/brutes/${b.id}` : `/brutes/${b.id}`;
 
   return (
     <div className="page fight-page">
       <header className="page-head">
         <div>
           <h1>{f.player.name} vs {f.opponent.name}</h1>
-          <span className="muted">Level {f.player.level} against level {f.opponent.level}</span>
+          <span className="muted">Level {f.player.level} against level {f.opponent.level}{data.owner ? `, owned by ${data.owner.username}` : ""}</span>
         </div>
-        <Link to={`/brutes/${b.id}`} className="btn ghost light">Back to the cell</Link>
+        <Link to={back} className="btn ghost light">{admin ? "Back to the brute" : "Back to the cell"}</Link>
       </header>
       <div className="fight-layout">
         <div className="fight-stage-wrap">
@@ -49,7 +51,7 @@ export function FightPage() {
               <button type="button" className="btn ghost" onClick={() => setRevealed(true)}>Skip to the result</button>
             </div>
           ) : (
-            <FightResultPanel data={data} onReplay={() => { setRevealed(false); setTake((t) => t + 1); }} />
+            <FightResultPanel data={data} admin={admin} onReplay={() => { setRevealed(false); setTake((t) => t + 1); }} />
           )}
         </aside>
       </div>
@@ -58,10 +60,11 @@ export function FightPage() {
 }
 
 const TITLES = { win: "Victory!", loss: "Defeat", draw: "Draw" } as const;
+type FightData = Awaited<ReturnType<typeof api.getFight>> & { owner?: { id: string; username: string } };
 
-function FightResultPanel({ data, onReplay }: { data: NonNullable<Awaited<ReturnType<typeof api.getFight>>>; onReplay: () => void }) {
+function FightResultPanel({ data, admin, onReplay }: { data: FightData; admin: boolean; onReplay: () => void }) {
   const { fight: f, brute: b } = data;
-  const canFight = !b.pendingLevelUp && b.fightsLeft > 0;
+  const canFight = !admin && !b.pendingLevelUp && b.fightsLeft > 0;
   return (
     <div className="fight-result">
       <p className={`fight-verdict ${f.result}`}>{TITLES[f.result]}</p>
@@ -71,12 +74,12 @@ function FightResultPanel({ data, onReplay }: { data: NonNullable<Awaited<Return
       {f.pendingAfter && <p className="badge gold">Level-up ready</p>}
       <StatCompare you={f.playerStats} them={f.opponentStats} names={[f.player.name, f.opponent.name]} />
       <div className="fight-next">
-        {b.pendingLevelUp && <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>}
+        {!admin && b.pendingLevelUp && <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>}
         {canFight && <Link to={`/brutes/${b.id}/fight`} className="btn play">Fight again</Link>}
         <FightPips left={b.fightsLeft} total={b.dailyFights} />
         <span className="muted small">{b.fightsLeft} of {b.dailyFights} fights left today</span>
         <div className="row">
-          <Link to={`/brutes/${b.id}`} className="btn ghost">Back to the cell</Link>
+          <Link to={admin ? `/admin/brutes/${b.id}` : `/brutes/${b.id}`} className="btn ghost">{admin ? "Back to the brute" : "Back to the cell"}</Link>
           <button type="button" className="btn ghost" onClick={onReplay}>Watch again</button>
         </div>
       </div>
