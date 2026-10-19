@@ -12,6 +12,7 @@ export const Portrait = memo(function Portrait({ gfx, name, flip, lazy = true, c
       params={persoParams(gfx, { stop: true, flip })}
       label={`Portrait of ${name}`}
       lazy={lazy}
+      transparent
       className={"portrait " + (className ?? "")}
     />
   );

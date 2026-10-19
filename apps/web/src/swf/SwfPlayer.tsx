@@ -13,13 +13,15 @@ interface Props {
   allowScript?: boolean;
   /** don't create a player until the element is on screen (perso previews in long lists) */
   lazy?: boolean;
+  /** render without the SWF's stage background (wmode=transparent), so the page shows through */
+  transparent?: boolean;
 }
 
 /**
  * One Ruffle instance per mounted component. A new `params` value reloads the same instance;
  * unmounting removes it. StrictMode's mount → unmount → mount simply creates a fresh player.
  */
-export function SwfPlayer({ swf, params, label, className, allowScript = false, lazy = false }: Props) {
+export function SwfPlayer({ swf, params, label, className, allowScript = false, lazy = false, transparent = false }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<RufflePlayerElement | null>(null);
   const [visible, setVisible] = useState(!lazy);
@@ -60,11 +62,12 @@ export function SwfPlayer({ swf, params, label, className, allowScript = false, 
           unmuteOverlay: "hidden",
           splashScreen: false,
           logLevel: "warn",
+          ...(transparent ? { wmode: "transparent", backgroundColor: null } : {}),
         });
       })
       .catch((e: Error) => !cancelled && setError(e.message || `Couldn't load ${swf}.`));
     return () => { cancelled = true; };
-  }, [visible, swf, params, allowScript, label]);
+  }, [visible, swf, params, allowScript, label, transparent]);
 
   return (
     <div className={"swf " + (className ?? "")} role="img" aria-label={label}>

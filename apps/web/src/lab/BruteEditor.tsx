@@ -97,7 +97,11 @@ const pretty = (s: string) => s.split("_").map((w) => w.charAt(0) + w.slice(1).t
 
 function BruteSummary({ desc }: { desc: Description }) {
   const f = desc.fin;
-  const groups: [string, string[]][] = [["Weapons", f.weapons], ["Supers", f.supers], ["Pets", f.followers], ["Skills", f.perms], ["Talents", f.talents]];
+  // the category names match the engine's bonus kinds, so chips and level-up options share colours
+  const groups: [string, string, string[]][] = [
+    ["Weapons", "Weapons", f.weapons], ["Supers", "Super", f.supers], ["Pets", "Followers", f.followers],
+    ["Skills", "Permanent", f.perms], ["Talents", "Talent", f.talents],
+  ];
   return (
     <div className="summary">
       <dl className="stat-row">
@@ -107,10 +111,10 @@ function BruteSummary({ desc }: { desc: Description }) {
         <div><dt>Life</dt><dd>{f.life}</dd></div>
       </dl>
       <dl className="kit">
-        {groups.map(([label, items]) => (
+        {groups.map(([label, kind, items]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd>{items.length ? items.map((x) => <span key={x} className="chip">{pretty(x)}</span>) : <span className="muted">None</span>}</dd>
+            <dd>{items.length ? items.map((x) => <span key={x} className={`chip kind-${kind}`}>{pretty(x)}</span>) : <span className="muted">None</span>}</dd>
           </div>
         ))}
       </dl>
@@ -135,7 +139,7 @@ function LevelUps({ brute, desc, originalLevelUps, update }: { brute: SpecBrute;
           <li key={i} className={i >= originalLevelUps ? "added" : undefined}>
             <span className="lv">Lv {i + 2}</span>
             {lv.opts.map((o, oi) => (
-              <button key={oi} type="button" aria-pressed={lv.bit === oi} className={"opt" + (o.t === "b" ? " bonus" : "")}
+              <button key={oi} type="button" aria-pressed={lv.bit === oi} className={"opt" + (o.t === "b" ? ` bonus kind-${o.kind}` : "")}
                 onClick={() => { const c = brute.choices.slice(); c[i] = oi as Choice; update({ choices: c }); }}>
                 {o.text}
               </button>
