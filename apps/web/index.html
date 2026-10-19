@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#2b1d16" />
+    <title>MyBrute++</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Signika:wght@400;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Ruffle is self-hosted from /ruffle (pinned in package.json, copied by scripts/copy-ruffle.mjs)
+      window.RufflePlayer = window.RufflePlayer || {};
+      window.RufflePlayer.config = {
+        publicPath: "/ruffle/",
+        autoplay: "on",
+        unmuteOverlay: "hidden",
+        splashScreen: false,
+        contextMenu: "off",
+        letterbox: "on",
+        logLevel: "warn",
+        polyfills: false,
+      };
+    </script>
+    <script src="/ruffle/ruffle.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
