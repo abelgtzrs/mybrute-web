@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LaBrute fight player (Ruffle)</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #222;
+        color: #eee;
+        margin: 1em;
+      }
+      button {
+        margin: 0 0.5em 0.5em 0;
+        padding: 0.5em 1em;
+      }
+      textarea {
+        display: block;
+        width: min(760px, 100%);
+        min-height: 8em;
+        box-sizing: border-box;
+        margin: 0.5em 0;
+      }
+      #c {
+        width: 100%;
+        max-width: 1400px;
+        height: 560px;
+        background: #000;
+      }
+      #log {
+        font: 12px monospace;
+        color: #9c9;
+        white-space: pre-wrap;
+      }
+    </style>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+  </head>
+  <body>
+    <h3>LaBrute fight player</h3>
+    <div id="btns"></div>
+    <section aria-labelledby="paste-heading">
+      <h4 id="paste-heading">Run pasted fight data</h4>
+      <label for="fight-data"
+        >Paste a full parameter string (data=...&amp;k=...&amp;lang=...) or just
+        the data value:</label
+      >
+      <textarea
+        id="fight-data"
+        placeholder="data=...&amp;k=...&amp;lang=..."
+      ></textarea>
+      <button id="run-pasted" type="button">Run pasted data</button>
+    </section>
+    <div id="c"></div>
+    <div id="log"></div>
+    <script>
+      let player;
+      function log(s) {
+        document.getElementById("log").textContent += s + "\n";
+      }
+      function parseParams(text) {
+        const value = text.trim();
+        if (!value) throw new Error("paste fight data first");
+        const query = value.startsWith("?") ? value.slice(1) : value;
+        const params = query.startsWith("data=")
+          ? Object.fromEntries(new URLSearchParams(query))
+          : { data: value };
+        if (!params.data)
+          throw new Error(
+            "the parameter string must include a non-empty data value",
+          );
+        return params;
+      }
+      async function play(f) {
+        const r = window.RufflePlayer.newest();
+        if (player) {
+          player.remove();
+        }
+        player = r.createPlayer();
+        player.style.width = "760px";
+        player.style.height = "560px";
+        document.getElementById("c").replaceChildren(player);
+        player.addEventListener("loadedmetadata", () =>
+          log("loaded: " + f.name),
+        );
+        player.load({
+          url: "client.swf",
+          parameters:
+            typeof f.params === "string" ? parseParams(f.params) : f.params,
+          base: ".",
+          allowScriptAccess: false,
+          logLevel: "info",
+          contextMenu: true,
+          letterbox: "on",
+        });
+        log("loading: " + f.name);
+      }
+      function run(f) {
+        play(f).catch((e) => log("could not run " + f.name + ": " + e.message));
+      }
+      document.getElementById("run-pasted").addEventListener("click", () => {
+        run({
+          name: "pasted fight data",
+          params: document.getElementById("fight-data").value,
+        });
+      });
+      fetch("fights.json")
+        .then((r) => r.json())
+        .then((fs) => {
+          fs.forEach((f) => {
+            const b = document.createElement("button");
+            b.textContent = f.name;
+            b.onclick = () => run(f);
+            document.getElementById("btns").appendChild(b);
+          });
+        })
+        .catch((e) =>
+          log(
+            "could not load fights.json: " +
+              e +
+              " (serve this folder over http, don't open the file directly)",
+          ),
+        );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1195 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>LaBrute fight player + editor (Ruffle)</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font:
+          12px/1.35 Consolas,
+          "Courier New",
+          monospace;
+        background: #161616;
+        color: #d0d0d0;
+        margin: 0;
+        padding: 6px;
+      }
+      h2,
+      h3 {
+        font-size: 12px;
+        margin: 0;
+        padding: 3px 6px;
+        background: #262626;
+        border: 1px solid #3a3a3a;
+        border-bottom: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #999;
+        font-weight: normal;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      button,
+      select,
+      input,
+      textarea {
+        font: inherit;
+        color: #d0d0d0;
+        background: #0e0e0e;
+        border: 1px solid #3a3a3a;
+        border-radius: 0;
+        padding: 1px 5px;
+        margin: 0;
+      }
+      button {
+        background: #262626;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #333;
+        color: #fff;
+      }
+      input[type="number"] {
+        width: 6em;
+      }
+      input[type="checkbox"] {
+        vertical-align: middle;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      td,
+      th {
+        border: 1px solid #2c2c2c;
+        padding: 1px 5px;
+        text-align: left;
+        vertical-align: top;
+        font-weight: normal;
+      }
+      th,
+      .k {
+        color: #777;
+        white-space: nowrap;
+        width: 1%;
+      }
+      .num {
+        text-align: right;
+        color: #e8e8e8;
+      }
+      .box {
+        border: 1px solid #3a3a3a;
+        background: #1b1b1b;
+        margin-bottom: 6px;
+      }
+      .box > .b {
+        padding: 4px 6px;
+      }
+      #app {
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+      }
+      #left {
+        flex: 1;
+        min-width: 0;
+      }
+      #right {
+        width: 660px;
+        flex: none;
+        position: sticky;
+        top: 6px;
+        max-height: calc(100vh - 12px);
+        overflow: auto;
+      }
+      .bar {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      #paste {
+        flex: 1;
+        min-width: 200px;
+        height: 22px;
+        resize: vertical;
+      }
+      #out {
+        width: 100%;
+        height: 44px;
+        resize: vertical;
+        color: #8a8;
+      }
+      #btns button {
+        margin-right: 3px;
+      }
+      #editor {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+        gap: 6px;
+      }
+      #editor > .card {
+        margin: 0;
+      }
+      .card {
+        border: 1px solid #3a3a3a;
+        background: #1b1b1b;
+      }
+      .card .hd {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 2px 6px;
+        background: #262626;
+        border-bottom: 1px solid #3a3a3a;
+      }
+      .card .hd .ttl {
+        flex: 1;
+        color: #fff;
+      }
+      .card .hd .t0 {
+        color: #7bd;
+      }
+      .card .hd .t1 {
+        color: #e88;
+      }
+      .cols {
+        display: flex;
+        gap: 6px;
+        padding: 4px 6px;
+      }
+      .ctl {
+        flex: 1;
+        min-width: 0;
+      }
+      .pv {
+        width: 84px;
+        height: 164px;
+        background: #0e0e0e;
+        border: 1px solid #2c2c2c;
+        flex: none;
+        color: #555;
+        font-size: 10px;
+        overflow: hidden;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 0;
+        margin: 3px 0;
+      }
+      .grid div {
+        font-size: 10px;
+        color: #777;
+        border: 1px solid #2c2c2c;
+        padding: 0 2px;
+      }
+      .grid input {
+        width: 100%;
+        border: 0;
+        border-top: 1px solid #2c2c2c;
+        padding: 0 2px;
+        background: #0e0e0e;
+      }
+      .stats td.v {
+        color: #9d9;
+        word-break: break-word;
+      }
+      .bits {
+        color: #8bd;
+        word-break: break-all;
+        margin: 3px 0;
+      }
+      .lv {
+        display: flex;
+        gap: 2px;
+        margin: 1px 0;
+      }
+      .lv .n {
+        width: 3em;
+        color: #777;
+        flex: none;
+      }
+      .lv.new .n {
+        color: #fc6;
+      }
+      .opt {
+        flex: 1;
+        text-align: left;
+        background: #0e0e0e;
+        color: #999;
+        border: 1px solid #2c2c2c;
+        padding: 0 4px;
+        cursor: pointer;
+        margin: 0;
+      }
+      .opt.sel {
+        background: #1f3a1f;
+        border-color: #4a7a4a;
+        color: #fff;
+      }
+      .opt.bonus {
+        color: #c9a85a;
+      }
+      .opt.sel.bonus {
+        color: #fff;
+      }
+      .list {
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid #2c2c2c;
+        padding: 2px;
+        margin-top: 3px;
+      }
+      details > summary {
+        cursor: pointer;
+        color: #777;
+      }
+      #c {
+        width: 100%;
+        height: 410px;
+        background: #000;
+        border: 1px solid #3a3a3a;
+        margin-bottom: 6px;
+      }
+      #err {
+        color: #f66;
+        padding: 2px 0;
+        min-height: 1.35em;
+      }
+      #sys {
+        color: #777;
+        white-space: pre-wrap;
+      }
+      .hint {
+        color: #666;
+      }
+      #actlog {
+        height: 360px;
+        overflow: auto;
+        border: 1px solid #2c2c2c;
+        background: #0e0e0e;
+        padding: 2px;
+      }
+      #actlog div {
+        padding: 0 3px;
+        white-space: pre-wrap;
+      }
+      #actlog .i {
+        color: #555;
+        display: inline-block;
+        width: 3em;
+      }
+      .k-hit {
+        color: #e99;
+      }
+      .k-miss {
+        color: #8ac;
+      }
+      .k-death {
+        color: #f55;
+        font-weight: bold;
+      }
+      .k-end {
+        color: #ee6;
+        font-weight: bold;
+      }
+      .k-move {
+        color: #666;
+      }
+      .k-info {
+        color: #bbb;
+      }
+      .tot {
+        width: 100%;
+      }
+      #savedlist table td.act {
+        width: 1%;
+        white-space: nowrap;
+      }
+      @media (max-width: 1250px) {
+        #app {
+          flex-direction: column;
+        }
+        #right {
+          width: 100%;
+          position: static;
+          max-height: none;
+        }
+      }
+    .inv {
+        width: 330px;
+        height: 600px;
+        background: #111;
+        margin-top: 4px;
+      }
+    </style>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <script src="labrute.js"></script>
+    <script src="glad.js"></script>
+    <script src="fight.js"></script>
+    <script src="fightlog.js"></script>
+  </head>
+  <body>
+    <div class="box">
+      <div class="b"><a href="brute-party.html" style="color:#8bd">Open Brute Party</a></div>
+      <h3>Payload <span id="btns"></span></h3>
+      <div class="b bar">
+        <textarea
+          id="paste"
+          placeholder="data=...&k=...&lang=.. (or whole embed tag)"
+        ></textarea
+        ><button id="load">Load</button
+        ><button id="savepl">Save payload</button>
+      </div>
+      <div id="payloads" class="b"></div>
+    </div>
+    <div id="err"></div>
+    <div id="bar" style="display: none">
+      <div id="app">
+        <div id="left">
+          <div class="box">
+            <h3>Fight</h3>
+            <div class="b"><table id="fightinfo"></table></div>
+          </div>
+          <div id="editor"></div>
+          <div class="box" style="margin-top: 6px">
+            <h3>Add brute</h3>
+            <div class="b bar">
+              <label
+                >team
+                <select id="addteam">
+                  <option value="0">0</option>
+                  <option value="1" selected>1</option>
+                </select></label
+              >
+              <label
+                >name
+                <input
+                  id="addname"
+                  type="text"
+                  value="Newbie"
+                  style="width: 8em"
+              /></label>
+              <label
+                >id <input id="addid" type="number" style="width: 8em" /></label
+              ><button id="addrnd">rand id</button>
+              <label
+                >lvl
+                <input
+                  id="addlvl"
+                  type="number"
+                  min="1"
+                  value="40"
+                  style="width: 4em"
+              /></label>
+              <label
+                ><input id="addrandch" type="checkbox" checked /> random
+                bits</label
+              ><button id="addbtn">Add</button>
+            </div>
+          </div>
+          <div class="box">
+            <h3>
+              Saved brutes
+              <span
+                >load into team
+                <select id="savedteam">
+                  <option value="">saved</option>
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                </select></span
+              >
+            </h3>
+            <div id="savedlist" class="b"></div>
+          </div>
+        </div>
+        <div id="right">
+          <div class="bar" style="margin-bottom: 4px">
+            <button id="play">Apply &amp; play</button
+            ><button id="copy">Copy params</button>
+          </div>
+          <div id="c"></div>
+          <div class="box">
+            <h3>Log <span id="logsum"></span></h3>
+            <div class="b">
+              <div class="bar" style="margin-bottom: 3px">
+                <label><input type="checkbox" id="showmoves" /> moves</label
+                ><button id="copylog">Copy log</button>
+              </div>
+              <div id="actlog"></div>
+            </div>
+          </div>
+          <div class="box">
+            <h3>Params</h3>
+            <div class="b"><textarea id="out" readonly></textarea></div>
+          </div>
+          <div id="sys"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const sys = (s) => {
+        $("sys").textContent += s + "\n";
+      };
+      let player,
+        session = null,
+        cards = [];
+      const LABELS = [
+        "body",
+        "p1",
+        "p2",
+        "p3",
+        "p4",
+        "p5",
+        "p6",
+        "p7",
+        "p8",
+        "p9",
+        "p10",
+        "col0",
+        "col1",
+        "col2",
+        "col3",
+        "col4",
+      ];
+
+      // ---- brute preview: perso.swf renders a brute from FlashVars data=<gfx> and chk=<hash of gfx> ----
+      const gfxParts = (gfx) =>
+        gfx.split(";").map((s) => {
+          const v = parseInt(s, 10);
+          return isNaN(v) ? 0 : v;
+        });
+      function gfxHash(parts) {
+        let h = 1;
+        for (const x of parts) h = ((h * 11) ^ x) % 2097151;
+        return h;
+      }
+      function previewParams(gfx) {
+        const p = gfxParts(gfx);
+        return (
+          "data=" +
+          encodeURIComponent(p.join(";")) +
+          "&chk=" +
+          gfxHash(p) +
+          "&stop=1"
+        );
+      }
+      function loadPreview(c) {
+        try {
+          const r = window.RufflePlayer.newest();
+          if (!c.pvPlayer) {
+            c.pvPlayer = r.createPlayer();
+            c.pvPlayer.style.width = "100%";
+            c.pvPlayer.style.height = "89%";
+            c.pvEl.replaceChildren(c.pvPlayer);
+          }
+          c.pvPlayer.load({
+            url: "perso.swf",
+            parameters: previewParams(c.g.gfx),
+            base: ".",
+            allowScriptAccess: false,
+            letterbox: "on",
+            contextMenu: "off",
+            logLevel: "warn",
+          });
+        } catch (e) {
+          c.pvEl.textContent = "preview unavailable: " + e.message;
+        }
+      }
+      function schedulePreview(c) {
+        clearTimeout(c.pvT);
+        c.pvT = setTimeout(() => loadPreview(c), 250);
+      }
+
+      // ---- inventory: inventory.swf renders the weapon board, skill icons and pets from FlashVars data=<Codec-encoded {_s,_bits,_level,_a}> k=<key> lang=<lang> ----
+      function invParams(g) {
+        const Y = (str) => ({ k: "y", v: LaBrute.pencode(str) });
+        const I = (v) => (v === 0 ? { k: "z" } : { k: "i", v: String(v) });
+        const bytes = LaBrute.choicesToBytes(g.choices, g.lvl);
+        const lang = (session && session.info && session.info.lang) || "en";
+        const ast = {
+          k: "o",
+          v: [
+            [Y("_l"), Y(lang)],
+            [Y("_s"), I(g.id)],
+            [Y("_bits"), { k: "s", v: LaBrute.b64enc(bytes) }],
+            [Y("_level"), I(g.lvl)],
+            [Y("_a"), { k: "n" }],
+          ],
+        };
+        const key = Array.from({ length: 8 }, () =>
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".charAt(Math.floor(Math.random() * 62)),
+        ).join("");
+        return (
+          "data=" + LaBrute.pencode(LaBrute.encode(LaBrute.serHx(ast), key)) +
+          "&k=" + key + "&lang=" + lang
+        );
+      }
+      function loadInventory(c) {
+        try {
+          const r = window.RufflePlayer.newest();
+          if (!c.invPlayer) {
+            c.invPlayer = r.createPlayer();
+            c.invPlayer.style.width = "330px";
+            c.invPlayer.style.height = "600px";
+            c.invEl.replaceChildren(c.invPlayer);
+          }
+          c.invPlayer.load({
+            url: "inventory.swf",
+            parameters: invParams(c.g),
+            base: ".",
+            allowScriptAccess: false,
+            letterbox: "on",
+            contextMenu: "off",
+            logLevel: "warn",
+          });
+        } catch (e) {
+          c.invEl.textContent = "inventory unavailable: " + e.message;
+        }
+      }
+      function scheduleInventory(c) {
+        if (!c.invDet || !c.invDet.open) return;
+        clearTimeout(c.invT);
+        c.invT = setTimeout(() => loadInventory(c), 300);
+      }
+
+      // ---- fight player ----
+      function play(params, name) {
+        const r = window.RufflePlayer.newest();
+        if (player) player.remove();
+        player = r.createPlayer();
+        player.style.width = "100%";
+        player.style.height = "100%";
+        $("c").replaceChildren(player);
+        player.addEventListener("loadedmetadata", () => sys("loaded: " + name));
+        player.load({
+          url: "client.swf",
+          parameters: params,
+          base: ".",
+          allowScriptAccess: false,
+          logLevel: "info",
+          letterbox: "on",
+        });
+        sys("loading: " + name);
+      }
+
+      // ---- action log (original Arena code, current edits) ----
+      function renderLog() {
+        const box = $("actlog");
+        box.replaceChildren();
+        try {
+          const r = FightAPI.run(
+            JSON.parse(JSON.stringify(session.fightInput())),
+          );
+          const glads = session.glads.map((g, i) => ({
+            id: g.id,
+            name: g.name,
+            team: g.team,
+            life: cards[i].life,
+          }));
+          const showMoves = $("showmoves").checked;
+          const lines = FightLog.format(r.history, glads);
+          $("logsum").textContent =
+            "winner team " + r.win + " | " + r.history.length + " events";
+          lines
+            .filter((l) => showMoves || l.kind !== "move")
+            .forEach((l) => {
+              const d = document.createElement("div");
+              d.className = "k-" + l.kind;
+              d.innerHTML = "<span class='i'></span>";
+              d.firstChild.textContent = l.i;
+              d.appendChild(document.createTextNode(l.text));
+              box.appendChild(d);
+            });
+          box._text = lines
+            .filter((l) => showMoves || l.kind !== "move")
+            .map((l) => l.i + ": " + l.text)
+            .join("\n");
+        } catch (e) {
+          box.textContent = "could not simulate this fight: " + e.message;
+        }
+      }
+
+      // ---- editor cards ----
+      function statsText(d) {
+        const f = d.fin;
+        return [
+          ["Str", f.force],
+          ["Agi", f.agility],
+          ["Spd", f.speed],
+          ["Life", f.life],
+        ];
+      }
+      function fillStats(c, d) {
+        const f = d.fin,
+          t = c.stats;
+        t.replaceChildren();
+        const row = (k, v, cls) => {
+          const tr = t.insertRow();
+          const a = document.createElement("th");
+          a.textContent = k;
+          const b = tr.insertCell();
+          b.className = cls || "v";
+          b.textContent = v;
+          tr.insertBefore(a, b);
+          return tr;
+        };
+        const nums = statsText(d)
+          .map(([k, v]) => k + " " + v)
+          .join("   ");
+        row("stats", nums);
+        row("weapons", f.weapons.join(", ") || "-");
+        row("supers", f.supers.join(", ") || "-");
+        row("followers", f.followers.join(", ") || "-");
+        row("perms", f.perms.join(", ") || "-");
+        if (!d.check)
+          row(
+            "!",
+            "internal check failed (picker and original setLevels disagree)",
+            "v k-death",
+          );
+      }
+      function updateCard(c) {
+        const g = c.g,
+          d = GladAPI.describe(g.id, g.lvl, g.choices);
+        c.life = d.fin.life;
+        fillStats(c, d);
+        c.lvlIn.value = g.lvl + 1;
+        const bytes = LaBrute.choicesToBytes(g.choices, g.lvl);
+        c.bitsIn.value = bytes
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        c.bitsEl.textContent =
+          "[" + g.lvl + " level-ups]  b64 " + (LaBrute.b64enc(bytes) || "-");
+        const sc = c.list.scrollTop;
+        c.list.replaceChildren();
+        d.levels.forEach((lv, i) => {
+          const row = document.createElement("div");
+          row.className = "lv" + (i >= c.orig.lvl ? " new" : "");
+          const n = document.createElement("div");
+          n.className = "n";
+          n.textContent = "Lv " + (i + 2);
+          row.appendChild(n);
+          lv.opts.forEach((o, oi) => {
+            const b = document.createElement("button");
+            b.className =
+              "opt" +
+              (o.t === "b" ? " bonus" : "") +
+              (lv.bit === oi ? " sel" : "");
+            b.textContent = o.text;
+            b.onclick = () => {
+              g.choices[i] = oi;
+              afterEdit(c);
+            };
+            row.appendChild(b);
+          });
+          c.list.appendChild(row);
+        });
+        c.list.scrollTop = sc;
+        scheduleInventory(c);
+      }
+      function afterEdit(c) {
+        updateCard(c);
+        $("out").value = session.params();
+        renderLog();
+      }
+      function syncGfx(c) {
+        const p = c.g.gfx.split(";");
+        c.gfxIn.value = c.g.gfx;
+        c.fields.forEach((f, i) => {
+          f.value = p[i] !== undefined ? p[i] : "";
+        });
+      }
+      function setGfx(c, str, fromFields) {
+        c.g.gfx = str;
+        if (!fromFields) syncGfx(c);
+        else c.gfxIn.value = str;
+        schedulePreview(c);
+        $("out").value = session.params();
+      }
+      function buildCard(g, gi) {
+        const el = document.createElement("div");
+        el.className = "card";
+        el.innerHTML =
+          "<div class='hd'><span class='ttl'></span><label>team <select class='team'><option value='0'>0</option><option value='1'>1</option></select></label><button class='save'>Save</button><button class='rm'>Remove</button></div><div class='cols'><div class='pv'></div><div class='ctl'>" +
+          "<div class='bar'><label>lvl <input class='lvl' type='number' min='1' max='500' style='width:4.5em'></label><button class='reset'>Reset</button> <label>gfx <input class='gfx' type='text' style='width:21em'></label><button class='rnd'>Rand look</button></div>" +
+          "<div class='grid'></div><table class='stats'></table><div class='bits'><label>bits hex <input class='bitsin' type='text' style='width:22em'></label> <span class='b64'></span></div>" +
+          "<details><summary>level-up choices</summary><div class='list'></div></details>" +
+          "<details class='invd'><summary>inventory</summary><div class='inv'>loading…</div></details></div></div>";
+        el.querySelector(".ttl").textContent = g.name + "  (id " + g.id + ")";
+        const teamSel = el.querySelector(".team");
+        teamSel.value = String(g.team);
+        const c = {
+          g,
+          el,
+          orig: { lvl: g.lvl, gfx: g.gfx, choices: g.choices.slice() },
+          pvEl: el.querySelector(".pv"),
+          lvlIn: el.querySelector(".lvl"),
+          gfxIn: el.querySelector(".gfx"),
+          stats: el.querySelector(".stats"),
+          bitsEl: el.querySelector(".b64"),
+          bitsIn: el.querySelector(".bitsin"),
+          list: el.querySelector(".list"),
+          fields: [],
+          invEl: el.querySelector(".inv"),
+          invDet: el.querySelector(".invd"),
+        };
+        c.invDet.ontoggle = () => {
+          if (c.invDet.open) loadInventory(c);
+        };
+        const grid = el.querySelector(".grid");
+        LABELS.forEach((lab, i) => {
+          const w = document.createElement("div");
+          w.textContent = lab;
+          const inp = document.createElement("input");
+          inp.type = "number";
+          inp.min = 0;
+          inp.oninput = () =>
+            setGfx(
+              c,
+              c.fields
+                .map((f) =>
+                  f.value === "" ? "0" : String(parseInt(f.value, 10) || 0),
+                )
+                .join(";"),
+              true,
+            );
+          c.fields.push(inp);
+          w.appendChild(inp);
+          grid.appendChild(w);
+        });
+        teamSel.onchange = () => {
+          const nt = parseInt(teamSel.value, 10),
+            old = g.team;
+          g.team = nt;
+          if (session.glads.filter((o) => o.team === old).length < 1) {
+            g.team = old;
+            teamSel.value = String(old);
+            $("err").textContent = "team " + old + " needs at least one brute";
+            return;
+          }
+          $("err").textContent = "";
+          $("out").value = session.params();
+          renderLog();
+        };
+        el.querySelector(".save").onclick = () => {
+          const label = prompt(
+            "Name for this saved brute state:",
+            g.name + " lv" + (g.lvl + 1),
+          );
+          if (label === null) return;
+          const all = loadSaved();
+          all.push({
+            label: label.trim() || g.name,
+            name: g.name,
+            id: g.id,
+            team: g.team,
+            lvl: g.lvl,
+            gfx: g.gfx,
+            choices: g.choices.slice(0, g.lvl),
+          });
+          storeSaved(all);
+          renderSaved();
+        };
+        el.querySelector(".rm").onclick = () => {
+          try {
+            session.removeGlad(cards.indexOf(c));
+          } catch (e) {
+            $("err").textContent = e.message;
+            return;
+          }
+          $("err").textContent = "";
+          if (c.pvPlayer) c.pvPlayer.remove();
+          if (c.invPlayer) c.invPlayer.remove();
+          cards.splice(cards.indexOf(c), 1);
+          el.remove();
+          $("out").value = session.params();
+          renderLog();
+        };
+        c.bitsIn.onchange = () => {
+          g.choices = LaBrute.bytesToChoices(
+            session.hexBytes(c.bitsIn.value),
+            g.lvl,
+          );
+          afterEdit(c);
+        };
+        c.gfxIn.onchange = () => {
+          setGfx(c, c.gfxIn.value.trim().replace(/\s+/g, ""));
+        };
+        c.lvlIn.onchange = () => {
+          g.lvl = Math.max(0, (parseInt(c.lvlIn.value, 10) || 1) - 1);
+          while (g.choices.length < g.lvl) g.choices.push(0);
+          afterEdit(c);
+        };
+        el.querySelector(".reset").onclick = () => {
+          Object.assign(g, {
+            lvl: c.orig.lvl,
+            gfx: c.orig.gfx,
+            choices: c.orig.choices.slice(),
+          });
+          syncGfx(c);
+          schedulePreview(c);
+          afterEdit(c);
+        };
+        el.querySelector(".rnd").onclick = () => {
+          const p = g.gfx.split(";").map((x) => parseInt(x, 10) || 0);
+          for (let i = 2; i < 16; i++) p[i] = Math.floor(Math.random() * 100);
+          setGfx(c, p.join(";"));
+        };
+        return c;
+      }
+      // ---- saved brute states (localStorage) ----
+      const SKEY = "labrute.savedBrutes";
+      function loadSaved() {
+        try {
+          return JSON.parse(localStorage.getItem(SKEY)) || [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function storeSaved(a) {
+        try {
+          localStorage.setItem(SKEY, JSON.stringify(a));
+        } catch (e) {
+          $("err").textContent = "could not save: " + e.message;
+        }
+      }
+      function applySaved(s) {
+        if (!session) return;
+        try {
+          const idx = session.glads.findIndex((g) => g.id === s.id);
+          if (idx >= 0) {
+            const c = cards[idx],
+              g = c.g;
+            Object.assign(g, {
+              name: s.name,
+              lvl: s.lvl,
+              gfx: s.gfx,
+              choices: s.choices.slice(),
+            });
+            while (g.choices.length < g.lvl) g.choices.push(0);
+            c.el.querySelector(".ttl").textContent =
+              g.name + "  (id " + g.id + ")";
+            syncGfx(c);
+            schedulePreview(c);
+            afterEdit(c);
+          } else {
+            const team =
+              $("savedteam").value === ""
+                ? s.team
+                : parseInt($("savedteam").value, 10);
+            const i = session.addGlad({
+              name: s.name,
+              id: s.id,
+              team,
+              lvl: s.lvl,
+              gfx: s.gfx,
+              choices: s.choices,
+            });
+            const c = buildCard(session.glads[i], i);
+            cards.push(c);
+            $("editor").appendChild(c.el);
+            syncGfx(c);
+            updateCard(c);
+            loadPreview(c);
+            $("out").value = session.params();
+            renderLog();
+          }
+          $("err").textContent = "";
+        } catch (e) {
+          $("err").textContent = e.message;
+        }
+      }
+      function renderSaved() {
+        const box = $("savedlist"),
+          all = loadSaved();
+        box.replaceChildren();
+        if (!all.length) {
+          box.textContent = "empty";
+          box.className = "b hint";
+          return;
+        }
+        box.className = "b";
+        const t = document.createElement("table");
+        const hr = t.insertRow();
+        ["label", "name", "id", "lvl", "team", "bits (hex)", ""].forEach(
+          (h) => {
+            const th = document.createElement("th");
+            th.textContent = h;
+            th.style.width = "auto";
+            hr.appendChild(th);
+          },
+        );
+        all.forEach((s, i) => {
+          const tr = t.insertRow();
+          const hex = LaBrute.choicesToBytes(s.choices, s.lvl)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          [s.label, s.name, s.id, s.lvl + 1, s.team, hex || "-"].forEach(
+            (v, ci) => {
+              const td = tr.insertCell();
+              td.textContent = v;
+              if (ci === 3 || ci === 2) td.className = "num";
+              if (ci === 5) td.style.wordBreak = "break-all";
+            },
+          );
+          const td = tr.insertCell();
+          td.className = "act";
+          const l = document.createElement("button");
+          l.textContent = "Load";
+          l.onclick = () => applySaved(s);
+          const d = document.createElement("button");
+          d.textContent = "Del";
+          d.onclick = () => {
+            const a = loadSaved();
+            a.splice(i, 1);
+            storeSaved(a);
+            renderSaved();
+          };
+          td.appendChild(l);
+          td.appendChild(d);
+        });
+        box.appendChild(t);
+      }
+      function renderInfo() {
+        const t = $("fightinfo");
+        t.replaceChildren();
+        const row = (cells, head) => {
+          const tr = t.insertRow();
+          cells.forEach((v) => {
+            const c = document.createElement(head ? "th" : "td");
+            c.style.width = "auto";
+            c.style.wordBreak = "break-all";
+            if (v instanceof Node) c.appendChild(v);
+            else c.textContent = v;
+            tr.appendChild(c);
+          });
+        };
+        const field = (val, w, apply) => {
+          const i = document.createElement("input");
+          i.type = "text";
+          i.value = val;
+          i.style.width = w;
+          i.onchange = () => {
+            try {
+              apply(i.value.trim());
+              $("err").textContent = "";
+              $("out").value = session.params();
+              renderLog();
+            } catch (e) {
+              $("err").textContent = e.message;
+            }
+            renderInfo();
+          };
+          return i;
+        };
+        const int = (s, what) => {
+          if (!/^-?\d+$/.test(s)) throw new Error(what + " must be an integer");
+          return parseInt(s, 10);
+        };
+        row(["seed", "arena"], true);
+        row([
+          field(session.info.seed, "10em", (v) =>
+            session.setSeed(int(v, "seed")),
+          ),
+          field(session.info.arena, "6em", (v) =>
+            session.setArena(int(v, "arena")),
+          ),
+        ]);
+        const sup = session.supports();
+        if (sup.length) {
+          row(["support team", "id", "lvl", "bits (hex)", "gfx"], true);
+          sup.forEach((s) =>
+            row([
+              s.team,
+              field(s.id, "8em", (v) =>
+                session.setSupport(s.team, { id: int(v, "support id") }),
+              ),
+              field(s.lvl + 1, "4em", (v) =>
+                session.setSupport(s.team, {
+                  lvl: Math.max(0, int(v, "support level") - 1),
+                }),
+              ),
+              field(s.bits || "", "20em", (v) => {
+                if (v && !/^([0-9a-fA-F]{2})+$/.test(v))
+                  throw new Error("support bits must be hex byte pairs");
+                session.setSupport(s.team, { bits: v });
+              }),
+              field(s.gfx || "", "22em", (v) =>
+                session.setSupport(s.team, { gfx: v.replace(/\s+/g, "") }),
+              ),
+            ]),
+          );
+        }
+      }
+      function loadText(text) {
+        $("err").textContent = "";
+        try {
+          session = LaBrute.open(text);
+          const ed = $("editor");
+          ed.replaceChildren();
+          cards = [];
+          session.glads.forEach((g, gi) => {
+            const c = buildCard(g, gi);
+            cards.push(c);
+            ed.appendChild(c.el);
+          });
+          cards.forEach((c) => {
+            syncGfx(c);
+            updateCard(c);
+            loadPreview(c);
+          });
+          $("bar").style.display = "";
+          $("out").value = session.params();
+          renderInfo();
+          renderSaved();
+          renderLog();
+        } catch (e) {
+          $("err").textContent = "Could not use that payload: " + e.message;
+        }
+      }
+      function randId() {
+        let id;
+        do {
+          id = 10000000 + Math.floor(Math.random() * 90000000);
+        } while (session && session.glads.some((g) => g.id === id));
+        return id;
+      }
+      function randGfx() {
+        const p = [Math.floor(Math.random() * 2), 0];
+        for (let i = 2; i < 16; i++) p.push(Math.floor(Math.random() * 100));
+        return p.join(";");
+      }
+      $("addrnd").onclick = () => {
+        $("addid").value = randId();
+      };
+      $("addbtn").onclick = () => {
+        if (!session) return;
+        try {
+          const lvl = Math.max(0, (parseInt($("addlvl").value, 10) || 1) - 1);
+          const id = parseInt($("addid").value, 10) || randId();
+          const choices = Array.from({ length: lvl }, () =>
+            $("addrandch").checked ? Math.floor(Math.random() * 2) : 0,
+          );
+          const i = session.addGlad({
+            name: $("addname").value.trim() || "Brute",
+            id,
+            team: parseInt($("addteam").value, 10),
+            lvl,
+            gfx: randGfx(),
+            choices,
+          });
+          const c = buildCard(session.glads[i], i);
+          cards.push(c);
+          $("editor").appendChild(c.el);
+          syncGfx(c);
+          updateCard(c);
+          loadPreview(c);
+          $("err").textContent = "";
+          $("addid").value = "";
+          $("out").value = session.params();
+          renderLog();
+        } catch (e) {
+          $("err").textContent = e.message;
+        }
+      };
+      $("load").onclick = () => loadText($("paste").value);
+      // ---- saved payloads (localStorage) ----
+      const PKEY = "labrute.savedPayloads";
+      function loadPayloads() {
+        try {
+          return JSON.parse(localStorage.getItem(PKEY)) || [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function renderPayloads() {
+        const box = $("payloads"),
+          all = loadPayloads();
+        box.replaceChildren();
+        all.forEach((p, i) => {
+          const row = document.createElement("div");
+          const name = document.createElement("span");
+          name.textContent = p.label + " ";
+          const l = document.createElement("button");
+          l.textContent = "Load";
+          l.onclick = () => {
+            $("paste").value = p.params;
+            loadText(p.params);
+          };
+          const d = document.createElement("button");
+          d.textContent = "Del";
+          d.onclick = () => {
+            const a = loadPayloads();
+            a.splice(i, 1);
+            localStorage.setItem(PKEY, JSON.stringify(a));
+            renderPayloads();
+          };
+          row.append(name, l, d);
+          box.appendChild(row);
+        });
+      }
+      $("savepl").onclick = () => {
+        const params = session ? session.params() : $("paste").value.trim();
+        if (!params) {
+          $("err").textContent = "nothing to save";
+          return;
+        }
+        const label = prompt("Name for this payload:", "payload " + (loadPayloads().length + 1));
+        if (label === null) return;
+        try {
+          const a = loadPayloads();
+          a.push({ label: label.trim() || "payload", params });
+          localStorage.setItem(PKEY, JSON.stringify(a));
+          $("err").textContent = "";
+          renderPayloads();
+        } catch (e) {
+          $("err").textContent = "could not save: " + e.message;
+        }
+      };
+      renderPayloads();
+      $("play").onclick = () => {
+        const p = session.params();
+        $("out").value = p;
+        play(
+          p,
+          session.glads
+            .map((g) => g.name + " (" + (g.lvl + 1) + ")")
+            .join(" vs "),
+        );
+      };
+      $("copy").onclick = () => navigator.clipboard.writeText($("out").value);
+      $("copylog").onclick = () =>
+        navigator.clipboard.writeText($("actlog")._text || "");
+      $("showmoves").onchange = () => {
+        if (session) renderLog();
+      };
+      fetch("fights.json")
+        .then((r) => r.json())
+        .then((fs) => {
+          fs.forEach((f) => {
+            const b = document.createElement("button");
+            b.textContent = f.name;
+            b.onclick = () => {
+              $("paste").value = f.params;
+              loadText(f.params);
+            };
+            $("btns").appendChild(b);
+          });
+        })
+        .catch((e) =>
+          sys(
+            "could not load fights.json: " +
+              e +
+              " (serve this folder over http)",
+          ),
+        );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+# copied from node_modules/@ruffle-rs/ruffle by apps/web/scripts/copy-ruffle.mjs
+apps/web/public/ruffle/

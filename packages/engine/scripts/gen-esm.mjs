@@ -1,0 +1,31 @@
+// Wraps the vendored original scripts as ES modules WITHOUT changing a byte of their source.
+// Each original is a UMD-style IIFE that writes to `exports`/`module.exports` when those exist;
+// the wrapper provides local ones and re-exports what the script attached.
+// Run: npm run gen -w @mybrute/engine   (tests check the output is up to date)
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const vendor = join(here, "../vendor");
+const outDir = join(here, "../src/generated");
+
+const header = (file) => `// GENERATED from vendor/${file} by scripts/gen-esm.mjs. Do not edit.\n/* eslint-disable */\n// @ts-nocheck\n`;
+
+const targets = [
+  // Haxe output: (function($hx_exports,$global){...})(typeof exports != "undefined" ? exports : window, ...)
+  { file: "glad.js", pre: "const exports = {};\n", post: "\nexport const GladAPI = exports.GladAPI;\n" },
+  { file: "fight.js", pre: "const exports = {};\n", post: "\nexport const FightAPI = exports.FightAPI;\n" },
+  // hand-written UMD: module.exports = api when `module` exists
+  { file: "labrute.js", pre: "const module = { exports: {} };\n", post: "\nexport const LaBrute = module.exports;\n" },
+  { file: "fightlog.js", pre: "const module = { exports: {} };\n", post: "\nexport const FightLog = module.exports;\n" },
+  // inventory.js attaches to `window` (or globalThis) and reads root.LaBrute at call time; give it a private root
+  { file: "inventory.js", pre: 'import { LaBrute } from "./labrute.js";\nconst window = { LaBrute };\n', post: "\nexport const Inventory = window.Inventory;\n" },
+];
+
+for (const t of targets) {
+  const src = readFileSync(join(vendor, t.file), "utf8");
+  const begin = "// ---- vendor source begins ----\n", end = "\n// ---- vendor source ends ----\n";
+  writeFileSync(join(outDir, t.file), header(t.file) + t.pre + begin + src + end + t.post);
+}
+console.log("generated", targets.map((t) => t.file).join(", "));
