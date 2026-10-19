@@ -18,6 +18,11 @@ const store = localLabStore;
 const portable = (spec: FightSpec) => buildParams(spec, { mini: "mini_perso.swf", end: "javascript:()" });
 const fightLabel = (spec: FightSpec) => spec.brutes.map((b) => b.name).join(" vs ");
 
+/** On narrow screens only one section shows at a time; wide screens show all three and ignore this. */
+type Panel = "teams" | "editor" | "arena";
+const PANELS: [Panel, string][] = [["teams", "Teams"], ["editor", "Brute"], ["arena", "Arena"]];
+const PHONE = "(max-width: 699px)";
+
 export function LabPage() {
   const [state, dispatch] = useReducer(labReducer, undefined, initLab);
   const { spec, selected } = state;
@@ -25,6 +30,12 @@ export function LabPage() {
   const [bench, setBench] = useState<SavedBrute[]>(() => store.listBrutes());
   const [playback, setPlayback] = useState<Playback | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "teams" : "editor"));
+  // picking or adding a brute opens it in the editor (matters when sections are shown one at a time)
+  const act = useCallback((a: Parameters<typeof dispatch>[0]) => {
+    dispatch(a);
+    if (a.type === "select" || a.type === "addBrute") setPanel("editor");
+  }, []);
   const toastTimer = useRef<number>();
 
   const notify = useCallback((msg: string) => {
@@ -60,6 +71,7 @@ export function LabPage() {
   const play = () => {
     if (errors.length) return notify("Fix the problems listed under the arena first.");
     setPlayback({ params: buildParams(spec, { mini: swfUrl("mini_perso.swf"), end: endUrl }), nonce: Date.now(), snapshot: JSON.stringify(spec), ended: false });
+    setPanel("arena");
   };
 
   const loadPayload = (params: string, label: string) => {
@@ -135,20 +147,29 @@ export function LabPage() {
         </div>
       </div>
 
-      <VersusBoard spec={spec} descs={descs} selected={selected} problems={problems} dispatch={dispatch} />
-
-      <div className="lab-grid">
-        <div className="lab-main">
-          {sel && selected !== null ? (
-            <BruteEditor key={selected} index={selected} brute={sel} original={state.originals[selected]} desc={descs[selected]} spec={spec} dispatch={dispatch} onSave={saveBrute} />
-          ) : (
-            <section className="panel editor-empty"><p>Pick a brute above to edit its level, choices, look and inventory.</p></section>
-          )}
+      <div className="workspace" data-panel={panel}>
+        <div className="col col-teams">
+          <VersusBoard spec={spec} descs={descs} selected={selected} problems={problems} dispatch={act} />
           <Bench items={bench} takenIds={spec.brutes.map((b) => b.id)} onUse={applyBenchBrute}
             onDelete={(key) => { store.deleteBrute(key); setBench(store.listBrutes()); }} />
         </div>
-        <ArenaPanel spec={spec} descs={descs} sim={sim} stats={stats} errors={errors} playback={playback} onPlay={play} notify={notify} />
+        <div className="col col-editor">
+          {sel && selected !== null ? (
+            <BruteEditor key={selected} index={selected} brute={sel} original={state.originals[selected]} desc={descs[selected]} spec={spec} dispatch={dispatch} onSave={saveBrute} />
+          ) : (
+            <section className="panel editor-empty"><p>Pick a brute to edit its level, choices, look and inventory.</p></section>
+          )}
+        </div>
+        <div className="col col-arena">
+          <ArenaPanel spec={spec} descs={descs} sim={sim} stats={stats} errors={errors} playback={playback} onPlay={play} notify={notify} />
+        </div>
       </div>
+
+      <nav className="panel-tabs" aria-label="Lab sections">
+        {PANELS.map(([key, label]) => (
+          <button key={key} type="button" data-for={key} aria-pressed={panel === key} onClick={() => setPanel(key)}>{label}</button>
+        ))}
+      </nav>
 
       <PayloadDialog open={dialogOpen} store={store} onClose={() => setDialogOpen(false)} onLoad={loadPayload} />
       <div className="toast" role="status" aria-live="polite">{toast}</div>

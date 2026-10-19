@@ -29,6 +29,7 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
 
   return (
     <section className="editor panel" aria-label={`Editing ${brute.name}`}>
+      <div className="editor-top">
       <div className="editor-head">
         <Portrait gfx={brute.gfx} name={brute.name} lazy={false} className="editor-portrait" />
         <div className="editor-fields">
@@ -75,6 +76,7 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
       </div>
 
       {desc && <BruteSummary desc={desc} />}
+      </div>
 
       <div className="tabs" role="tablist">
         {TABS.map(([k, label]) => (

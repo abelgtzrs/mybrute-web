@@ -101,15 +101,15 @@ function ActionLog({ spec, descs, sim, notify }: { spec: FightSpec; descs: (Desc
   }, [spec, descs, sim, moves]);
   const copy = () => navigator.clipboard.writeText(lines.map((l) => `${l.i}: ${l.text}`).join("\n")).then(() => notify("Log copied."), () => notify("Couldn't reach the clipboard."));
   return (
-    <details className="log" open>
-      <summary>Action log</summary>
-      <div className="row">
+    <div className="log">
+      <div className="log-head">
+        <h3>Action log</h3>
         <label className="check"><input type="checkbox" checked={moves} onChange={(e) => setMoves(e.target.checked)} /> Show movement</label>
         <button type="button" className="btn small ghost" onClick={copy}>Copy log</button>
       </div>
-      <ol className="log-lines">
+      <ol className="log-lines" tabIndex={0} aria-label="Action log">
         {lines.map((l) => <li key={l.i} className={`k-${l.kind}`}><span className="i">{l.i}</span>{l.text}</li>)}
       </ol>
-    </details>
+    </div>
   );
 }
