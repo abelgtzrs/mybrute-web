@@ -277,36 +277,51 @@ label.wide { grid-column: 1 / -1; }
 .support-portrait { width: 40px; height: 60px; aspect-ratio: auto; flex: none; }
 .support .form-grid { margin: 8px 0 4px; }
 
-/* ---------- editor: brute details on the left, the inventory always visible on the right ---------- */
-.editor { display: grid; grid-template-columns: minmax(0, 1fr) clamp(150px, 31%, 270px); gap: 14px; }
-.editor-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-.editor-top { flex: 0 1 auto; min-height: 0; max-height: 55%; overflow-y: auto; overscroll-behavior: contain; }
-.editor-main > .tabs { flex: none; }
-.editor-main > .tab-panel { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* ---------- middle column: two sections ----------
+   top: the brute (details left, inventory right), sized to its details up to ~60% of the column;
+   bottom: level-ups / appearance / bits, taking the rest, with its tab content scrolling. */
+.col-editor > .editor-card { flex: 0 1 auto; max-height: 60%; }
+.col-editor > .editor-tabs { flex: 1 1 220px; }
+.editor-card {
+  min-height: 0; display: grid; gap: 16px;
+  grid-template-columns: minmax(0, 1fr) clamp(150px, 32%, 280px);
+}
+.editor-info { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.editor-info .summary { margin-bottom: 0; }
 
-.editor-inventory { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; border-left: 1.5px solid var(--paper-edge); padding-left: 14px; }
-.inventory-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+/* the inventory takes the height the details give it (contain: size keeps it from stretching the section) */
+.editor-inventory {
+  contain: size; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 8px;
+  border-left: 1.5px solid var(--paper-edge); padding-left: 14px;
+}
+.inventory-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; flex: none; }
 .inventory-controls label.inline { display: inline-flex; align-items: center; gap: 6px; }
 .inventory-controls select { width: auto; min-height: 30px; padding: 2px 6px; }
-/* inventory.swf is 330x600; it scales to the strip and never overflows it (Ruffle letterboxes) */
-.inventory-swf { flex: 0 1 auto; width: 100%; aspect-ratio: 330 / 600; max-height: 100%; min-height: 0; }
+/* inventory.swf is 330x600; Ruffle letterboxes it inside whatever box it gets */
+.inventory-swf { flex: 1 1 0; min-height: 0; width: 100%; }
 
-/* phones: no room beside the editor, so the inventory sits between the stats and the tabs */
+.editor-tabs { min-height: 0; display: flex; flex-direction: column; padding-top: 6px; }
+.editor-tabs > .tabs { flex: none; margin-top: 0; }
+.editor-tabs > .tab-panel { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* phones: details above the inventory inside the top section */
 @media (max-width: 699px) {
-  .editor { display: flex; flex-direction: column; gap: 0; }
-  .editor-main { display: contents; }
-  .editor-top { order: 1; max-height: 42%; }
-  .editor-inventory { order: 2; flex: none; height: 230px; border-left: 0; padding: 10px 0 0; border-top: 1.5px solid var(--paper-edge); margin-top: 8px; align-items: center; }
-  .editor-inventory .inventory-swf { width: auto; height: 100%; }
-  .editor-main > .tabs { order: 3; }
-  .editor-main > .tab-panel { order: 4; }
+  .col-editor > .editor-card { max-height: 55%; overflow-y: auto; }
+  .editor-card { display: flex; flex-direction: column; gap: 10px; }
+  .editor-info { flex: none; min-height: auto; overflow: visible; }
+  .editor-inventory { flex: none; contain: none; height: 240px; border-left: 0; padding: 10px 0 0; border-top: 1.5px solid var(--paper-edge); align-items: center; }
+  .editor-inventory .inventory-swf { width: 132px; }
 }
+
 .editor-empty { display: grid; place-content: center; text-align: center; padding: 40px 16px; color: var(--ink-2); }
 .editor-head { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 14px; align-items: start; }
 .editor-portrait { width: 88px; }
-.editor .form-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
-.editor .form-grid .id-field { grid-column: span 2; }
-.editor .id-field input { min-width: 6.5em; }
+.editor-card .form-grid { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 10px; }
+.editor-card .form-grid > label:first-child { width: 5.5em; flex: none; }
+.editor-card .form-grid > .team-switch { flex: none; }
+.editor-card .form-grid .id-field { flex: 1 1 190px; min-width: 0; }
+.editor-card .id-field input { min-width: 6.5em; }
 .editor-fields .row { margin: 0; }
 .editor-fields { display: grid; gap: 10px; min-width: 0; }
 .name-input { font: 25px/1.1 var(--font-display) !important; min-height: 42px !important; letter-spacing: 0.2px; }

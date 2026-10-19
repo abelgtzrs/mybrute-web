@@ -29,9 +29,10 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
   const teamCount = spec.brutes.filter((b) => b.team === brute.team).length;
 
   return (
-    <section className="editor panel" aria-label={`Editing ${brute.name}`}>
-      <div className="editor-main">
-      <div className="editor-top">
+    <>
+    {/* the brute itself: details on the left, the original inventory on the right */}
+    <section className="editor-card panel" aria-label={`${brute.name}: details and inventory`}>
+      <div className="editor-info">
       <div className="editor-head">
         <Portrait gfx={brute.gfx} name={brute.name} lazy={false} className="editor-portrait" />
         <div className="editor-fields">
@@ -79,7 +80,11 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
 
       {desc && <BruteSummary desc={desc} />}
       </div>
+      <InventoryPanel brute={brute} defaultLang={spec.lang} />
+    </section>
 
+    {/* how the brute is built: level-up choices, appearance, raw bits */}
+    <section className="editor-tabs panel" aria-label={`${brute.name}: level-ups, appearance and bits`}>
       <div className="tabs" role="tablist">
         {TABS.map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className="tab" onClick={() => setTab(k)}>{label}</button>
@@ -90,9 +95,8 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
         {tab === "look" && <Appearance brute={brute} update={update} />}
         {tab === "bits" && <Bits brute={brute} update={update} />}
       </div>
-      </div>
-      <InventoryPanel brute={brute} defaultLang={spec.lang} />
     </section>
+    </>
   );
 }
 
