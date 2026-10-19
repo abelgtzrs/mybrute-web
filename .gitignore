@@ -7,3 +7,5 @@ coverage/
 !.env.example
 # copied from node_modules/@ruffle-rs/ruffle by apps/web/scripts/copy-ruffle.mjs
 apps/web/public/ruffle/
+.pgdata/
+.pgdata-test/
