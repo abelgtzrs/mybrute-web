@@ -8,13 +8,15 @@ interface Props {
   /** team null: overwrite the brute with the same id already in the fight */
   onUse: (b: SpecBrute, team: 0 | 1 | null) => void;
   onDelete: (key: string) => void;
+  where: "account" | "browser";
 }
 
 /** Saved brute states, ready to drop into either team. */
-export function Bench({ items, takenIds, onUse, onDelete }: Props) {
+export function Bench({ items, takenIds, onUse, onDelete, where }: Props) {
   return (
     <section className="bench panel" aria-labelledby="bench-title">
       <h2 id="bench-title">Bench</h2>
+      <p className="hint">{where === "account" ? "Saved to your account." : "Saved in this browser. Sign in to keep Lab saves in your account."}</p>
       {items.length === 0 ? (
         <p className="muted">Save a brute from the editor to keep it here. You can put saved brutes back into any fight.</p>
       ) : (

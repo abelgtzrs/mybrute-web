@@ -7,10 +7,11 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @mybrute/web",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build -w @mybrute/web",
     "test": "npm test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "start": "npm run build && npm run start -w @mybrute/server"
   },
   "engines": {
     "node": ">=20"

@@ -19,7 +19,7 @@ export function PayloadDialog({ open, store, onClose, onLoad }: Props) {
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) { setSaved(store.listPayloads()); setError(null); d.showModal(); }
+    if (open && !d.open) { setSaved([]); store.listPayloads().then(setSaved, () => setSaved([])); setError(null); d.showModal(); }
     if (!open && d.open) d.close();
   }, [open, store]);
 
@@ -54,7 +54,7 @@ export function PayloadDialog({ open, store, onClose, onLoad }: Props) {
             {saved.map((p) => (
               <li key={p.key}>
                 <button type="button" className="link" onClick={() => tryLoad(p.params, p.label)}>{p.label}</button>
-                <button type="button" className="btn small ghost" aria-label={`Delete ${p.label}`} onClick={() => { store.deletePayload(p.key); setSaved(store.listPayloads()); }}>Delete</button>
+                <button type="button" className="btn small ghost" aria-label={`Delete ${p.label}`} onClick={() => { store.deletePayload(p.key).then(() => store.listPayloads()).then(setSaved, (e: Error) => setError(e.message)); }}>Delete</button>
               </li>
             ))}
           </ul>

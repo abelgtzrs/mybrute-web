@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   INVENTORY_LANGS, buildParams, describe, extractStats, importPayload, newLabFight, randomSeed, runFight, validateSpec,
   type Description, type FightSpec, type SpecBrute,
@@ -10,10 +11,9 @@ import { Bench } from "./Bench";
 import { BruteEditor } from "./BruteEditor";
 import { PayloadDialog } from "./PayloadDialog";
 import { initLab, labReducer } from "./state";
-import { localLabStore, type SavedBrute } from "./storage";
+import { useLabStore, type SavedBrute } from "./storage";
 import { VersusBoard } from "./VersusBoard";
 
-const store = localLabStore;
 /** Params meant to leave the app (copy/save) use the same conventions as the original lab folder. */
 const portable = (spec: FightSpec) => buildParams(spec, { mini: "mini_perso.swf", end: "javascript:()" });
 const fightLabel = (spec: FightSpec) => spec.brutes.map((b) => b.name).join(" vs ");
@@ -24,10 +24,15 @@ const PANELS: [Panel, string][] = [["teams", "Teams"], ["editor", "Brute"], ["ar
 const PHONE = "(max-width: 699px)";
 
 export function LabPage() {
-  const [state, dispatch] = useReducer(labReducer, undefined, initLab);
+  // "Try a copy in the Lab" from a Classic cell passes the brute in the navigation state; it is only a copy
+  const location = useLocation();
+  const [state, dispatch] = useReducer(labReducer, (location.state as { brute?: SpecBrute } | null)?.brute, initLab);
   const { spec, selected } = state;
+  const store = useLabStore();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [bench, setBench] = useState<SavedBrute[]>(() => store.listBrutes());
+  const [bench, setBench] = useState<SavedBrute[]>([]);
+  const reloadBench = useCallback(() => store.listBrutes().then(setBench, () => setBench([])), [store]);
+  useEffect(() => { void reloadBench(); }, [reloadBench]);
   const [playback, setPlayback] = useState<Playback | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "teams" : "editor"));
@@ -90,15 +95,15 @@ export function LabPage() {
     if (errors.length) return notify("Fix the problems listed under the arena first.");
     const label = window.prompt("Name this fight", fightLabel(spec));
     if (label === null) return;
-    try { store.savePayload(label.trim() || fightLabel(spec), portable(spec)); notify("Fight saved."); }
-    catch (e) { notify((e as Error).message); }
+    store.savePayload(label.trim() || fightLabel(spec), portable(spec))
+      .then(() => notify(store.where === "account" ? "Fight saved to your account." : "Fight saved in this browser."), (e: Error) => notify(e.message));
   };
 
   const saveBrute = (b: SpecBrute) => {
     const label = window.prompt("Name this saved brute", `${b.name}, level ${b.levelUps + 1}`);
     if (label === null) return;
-    try { store.saveBrute(label.trim() || b.name, b); setBench(store.listBrutes()); notify("Brute saved to the bench."); }
-    catch (e) { notify((e as Error).message); }
+    store.saveBrute(label.trim() || b.name, b)
+      .then(() => { void reloadBench(); notify("Brute saved to the bench."); }, (e: Error) => notify(e.message));
   };
 
   const applyBenchBrute = (b: SpecBrute, team: 0 | 1 | null) => {
@@ -151,7 +156,7 @@ export function LabPage() {
         <div className="col col-teams">
           <VersusBoard spec={spec} descs={descs} selected={selected} problems={problems} dispatch={act} />
           <Bench items={bench} takenIds={spec.brutes.map((b) => b.id)} onUse={applyBenchBrute}
-            onDelete={(key) => { store.deleteBrute(key); setBench(store.listBrutes()); }} />
+            where={store.where} onDelete={(key) => { store.deleteBrute(key).then(reloadBench, (e: Error) => notify(e.message)); }} />
         </div>
         <div className="col col-editor">
           {sel && selected !== null ? (

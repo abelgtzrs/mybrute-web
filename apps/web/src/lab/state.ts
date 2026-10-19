@@ -1,4 +1,4 @@
-import { applyAvoid, newLabFight, normalizeChoices, type FightSpec, type SpecBrute, type TeamProps } from "@mybrute/engine";
+import { applyAvoid, newLabBrute, newLabFight, normalizeChoices, randomSeed, type FightSpec, type SpecBrute, type TeamProps } from "@mybrute/engine";
 
 export interface LabState {
   spec: FightSpec;
@@ -19,7 +19,14 @@ export type LabAction =
   | { type: "setFight"; patch: Partial<Pick<FightSpec, "seed" | "arena" | "lang">> }
   | { type: "setSupport"; team: 0 | 1; patch: Record<string, unknown> };
 
-export function initLab(): LabState {
+/** A fresh fight, or (from a Classic cell) a copy of that brute against a random brute of the same level. */
+export function initLab(copy?: SpecBrute): LabState {
+  if (copy) {
+    const mine: SpecBrute = { ...structuredClone(copy), team: 0 };
+    const rival = newLabBrute(1, { levelUps: mine.levelUps, takenIds: [mine.id] });
+    const spec: FightSpec = { seed: randomSeed(), arena: 2, brutes: [mine, rival], p0: null, p1: null, lang: "en" };
+    return { spec, originals: structuredClone(spec.brutes), selected: 0, sourceLabel: `Copy of ${copy.name} (your Classic brute is unchanged)` };
+  }
   const spec = newLabFight();
   return { spec, originals: structuredClone(spec.brutes), selected: 0, sourceLabel: "New fight" };
 }

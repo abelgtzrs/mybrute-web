@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
-  GFX_LABELS, INVENTORY_LANGS, bitsToB64, bitsToHex, displayLevel, gfxParts, gfxString, hexToChoices, inventoryParams,
+  bitsToB64, bitsToHex, displayLevel, hexToChoices,
   isValidSeedId, levelUpsFor, randomChoices, randomLabId, BONUSES, bonusKey, isAvoided,
   type BonusKind, type Choice, type Description, type FightSpec, type SpecBrute,
 } from "@mybrute/engine";
 import { Portrait } from "../swf/Portrait";
-import { SwfPlayer } from "../swf/SwfPlayer";
+import { InventoryPanel } from "../ui/InventoryPanel";
+import { GfxEditor } from "../ui/GfxEditor";
 import { CommitInput, parseIntStrict } from "../ui/CommitInput";
 import type { LabAction } from "./state";
 
@@ -216,45 +217,7 @@ function AvoidRewards({ avoid, onChange }: { avoid: string[]; onChange: (list: s
 }
 
 function Appearance({ brute, update }: { brute: SpecBrute; update: (p: Partial<SpecBrute>) => void }) {
-  const parts = gfxParts(brute.gfx);
-  const setPart = (i: number, v: number) => { const p = parts.slice(); p[i] = v; update({ gfx: gfxString(p) }); };
-  return (
-    <div>
-      <div className="row">
-        <button type="button" className="btn small" onClick={() => { const p = parts.slice(); for (let i = 2; i < 16; i++) p[i] = Math.floor(Math.random() * 100); update({ gfx: gfxString(p) }); }}>Randomize look</button>
-      </div>
-      <div className="gfx-grid">
-        {GFX_LABELS.map((label, i) => (
-          <label key={label}>{label}
-            <CommitInput value={parts[i]} inputMode="numeric" onCommit={(t) => { const v = parseIntStrict(t); if (v === null || v < 0) return "Use 0 or more."; setPart(i, v); }} />
-          </label>
-        ))}
-      </div>
-      <label className="wide">Appearance string
-        <CommitInput value={brute.gfx} spellCheck={false} onCommit={(t) => { const s = t.replace(/\s+/g, ""); if (!/^\d+(;\d+){15}$/.test(s)) return "Use 16 numbers separated by semicolons."; update({ gfx: s }); }} />
-      </label>
-      <p className="hint">In fights, the Part 1 slot shows the brute's armor instead of this value.</p>
-    </div>
-  );
-}
-
-/** The original inventory.swf, always shown beside the editor (between stats and tabs on phones). */
-function InventoryPanel({ brute, defaultLang }: { brute: SpecBrute; defaultLang: string }) {
-  const [lang, setLang] = useState((INVENTORY_LANGS as readonly string[]).includes(defaultLang) ? defaultLang : "en");
-  const [ownedOnly, setOwnedOnly] = useState(false);
-  return (
-    <aside className="editor-inventory" aria-label={`Inventory of ${brute.name}`}>
-      <div className="inventory-controls">
-        <label className="inline">Language
-          <select value={lang} onChange={(e) => setLang(e.target.value)}>{INVENTORY_LANGS.map((l) => <option key={l}>{l}</option>)}</select>
-        </label>
-        <label className="check" title="Experimental: hide what this brute doesn't have">
-          <input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} /> Owned only
-        </label>
-      </div>
-      <SwfPlayer swf="inventory-transparent.swf" params={inventoryParams(brute, { lang, ownedOnly })} label={`Inventory of ${brute.name}`} className="inventory-swf" transparent />
-    </aside>
-  );
+  return <GfxEditor gfx={brute.gfx} onChange={(gfx) => update({ gfx })} />;
 }
 
 function Bits({ brute, update }: { brute: SpecBrute; update: (p: Partial<SpecBrute>) => void }) {
