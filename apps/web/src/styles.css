@@ -363,6 +363,27 @@ label.wide { grid-column: 1 / -1; }
 .opt.bonus { font-weight: 800; color: var(--ink); }
 .opt[aria-pressed="true"] { border-color: var(--ink); background: var(--gold-tint); color: var(--ink); box-shadow: inset 4px 0 0 var(--kind), 0 0 0 1px var(--ink); }
 @media (max-width: 520px) { .levels li { grid-template-columns: 1fr 1fr; } .lv { grid-column: 1 / -1; } }
+/* an avoided reward on offer: struck through and not selectable; the second option is taken */
+.opt.avoided { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--ink-3); background: var(--paper-lo); border-style: dashed; cursor: not-allowed; opacity: 1; }
+.levels li.blocked .lv { color: var(--team1-deep); }
+
+/* avoid list */
+.avoid { background: var(--paper-lo); border: 1px solid var(--paper-edge); border-radius: 10px; padding: 8px 10px; margin-bottom: 4px; }
+.avoid-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.avoid-head h4 { margin: 0; font: 17px var(--font-display); color: var(--ink); letter-spacing: 0.2px; }
+.avoid-head .muted { margin-right: auto; font-size: var(--t-small); font-weight: 700; }
+.avoid-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.avoid-picker { display: grid; gap: 8px; margin-top: 10px; max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.avoid-group { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+.avoid-group legend { font-size: var(--t-meta); font-weight: 800; color: var(--ink-2); padding: 0; margin-bottom: 4px; }
+.avoid .hint { margin: 8px 0 0; font-size: var(--t-meta); }
+button.chip { cursor: pointer; font-family: inherit; line-height: 1.4; }
+.chip.toggle { opacity: 0.75; }
+.chip.toggle:hover { opacity: 1; }
+.chip.toggle[aria-pressed="true"] { opacity: 1; background: var(--kind); color: #fff; border-color: var(--kind); text-decoration: line-through; text-decoration-thickness: 1.5px; }
+.chip.removable span { margin-left: 2px; font-weight: 800; }
+.clear-avoid { font-size: var(--t-meta); color: var(--ink-2); margin-left: 4px; }
+.chip.removable:hover { background: color-mix(in srgb, var(--kind) 22%, var(--paper-hi)); }
 
 .gfx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .facts { display: grid; gap: 6px; }

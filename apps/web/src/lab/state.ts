@@ -1,4 +1,4 @@
-import { newLabFight, normalizeChoices, type FightSpec, type SpecBrute, type TeamProps } from "@mybrute/engine";
+import { applyAvoid, newLabFight, normalizeChoices, type FightSpec, type SpecBrute, type TeamProps } from "@mybrute/engine";
 
 export interface LabState {
   spec: FightSpec;
@@ -36,6 +36,8 @@ export function labReducer(state: LabState, action: LabAction): LabState {
         if (i !== action.index) return b;
         const merged = { ...b, ...action.patch };
         merged.choices = normalizeChoices(merged.choices, merged.levelUps);
+        // keep the avoid list enforced whatever changed (id, level, choices or the list itself)
+        if (merged.avoid?.length) merged.choices = applyAvoid(merged.id, merged.levelUps, merged.choices, merged.avoid).choices;
         return merged;
       });
       return { ...state, spec: { ...state.spec, brutes: next } };

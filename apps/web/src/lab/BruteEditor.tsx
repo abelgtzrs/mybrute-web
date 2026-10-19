@@ -1,7 +1,8 @@
 import { useState } from "react";
 import {
   GFX_LABELS, INVENTORY_LANGS, bitsToB64, bitsToHex, displayLevel, gfxParts, gfxString, hexToChoices, inventoryParams,
-  isValidSeedId, levelUpsFor, randomChoices, randomLabId, type Choice, type Description, type FightSpec, type SpecBrute,
+  isValidSeedId, levelUpsFor, randomChoices, randomLabId, BONUSES, bonusKey, isAvoided,
+  type BonusKind, type Choice, type Description, type FightSpec, type SpecBrute,
 } from "@mybrute/engine";
 import { Portrait } from "../swf/Portrait";
 import { SwfPlayer } from "../swf/SwfPlayer";
@@ -126,30 +127,87 @@ function BruteSummary({ desc }: { desc: Description }) {
 }
 
 function LevelUps({ brute, desc, originalLevelUps, update }: { brute: SpecBrute; desc: Description; originalLevelUps: number; update: (p: Partial<SpecBrute>) => void }) {
-  if (!desc.levels.length) return <p className="muted">A level 1 brute has no level-ups yet. Raise its level to choose rewards.</p>;
+  const avoid = new Set(brute.avoid ?? []);
   const setAll = (c: Choice[]) => update({ choices: c });
   return (
     <div>
-      <div className="row">
-        <button type="button" className="btn small ghost" onClick={() => setAll(Array(brute.levelUps).fill(0))}>All first options</button>
-        <button type="button" className="btn small ghost" onClick={() => setAll(Array(brute.levelUps).fill(1))}>All second options</button>
-        <button type="button" className="btn small ghost" onClick={() => setAll(randomChoices(brute.levelUps))}>Random choices</button>
-      </div>
-      <p className="hint">Picking the second option also changes every later choice, exactly as in the original game.</p>
-      <ol className="levels">
-        {desc.levels.map((lv, i) => (
-          <li key={i} className={i >= originalLevelUps ? "added" : undefined}>
-            <span className="lv">Lv {i + 2}</span>
-            {lv.opts.map((o, oi) => (
-              <button key={oi} type="button" aria-pressed={lv.bit === oi} className={"opt" + (o.t === "b" ? ` bonus kind-${o.kind}` : "")}
-                onClick={() => { const c = brute.choices.slice(); c[i] = oi as Choice; update({ choices: c }); }}>
-                {o.text}
-              </button>
-            ))}
-          </li>
-        ))}
-      </ol>
+      <AvoidRewards avoid={brute.avoid ?? []} onChange={(list) => update({ avoid: list })} />
+      {!desc.levels.length ? <p className="muted">A level 1 brute has no level-ups yet. Raise its level to choose rewards.</p> : (
+        <>
+          <div className="row">
+            <button type="button" className="btn small ghost" onClick={() => setAll(Array(brute.levelUps).fill(0))}>All first options</button>
+            <button type="button" className="btn small ghost" onClick={() => setAll(Array(brute.levelUps).fill(1))}>All second options</button>
+            <button type="button" className="btn small ghost" onClick={() => setAll(randomChoices(brute.levelUps))}>Random choices</button>
+          </div>
+          <p className="hint">Picking the second option also changes every later choice, exactly as in the original game.</p>
+          <ol className="levels">
+            {desc.levels.map((lv, i) => {
+              const blocked = isAvoided(lv.opts[0], avoid);
+              return (
+                <li key={i} className={(i >= originalLevelUps ? "added" : "") + (blocked ? " blocked" : "")}>
+                  <span className="lv">Lv {i + 2}</span>
+                  {lv.opts.map((o, oi) => (
+                    <button key={oi} type="button" aria-pressed={lv.bit === oi}
+                      className={"opt" + (o.t === "b" ? ` bonus kind-${o.kind}` : "") + (oi === 0 && blocked ? " avoided" : "")}
+                      disabled={oi === 0 && blocked}
+                      title={oi === 0 && blocked ? "On your avoid list, so the second option is taken" : undefined}
+                      onClick={() => { const c = brute.choices.slice(); c[i] = oi as Choice; update({ choices: c }); }}>
+                      {o.text}
+                    </button>
+                  ))}
+                </li>
+              );
+            })}
+          </ol>
+        </>
+      )}
     </div>
+  );
+}
+
+const KIND_GROUPS: [BonusKind, string][] = [["Weapons", "Weapons"], ["Super", "Supers"], ["Followers", "Pets"], ["Permanent", "Skills"], ["Talent", "Talents"]];
+
+/** Rewards to steer away from: when one is offered at a level-up, the second option is taken instead. */
+function AvoidRewards({ avoid, onChange }: { avoid: string[]; onChange: (list: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const toggle = (key: string) => onChange(avoid.includes(key) ? avoid.filter((k) => k !== key) : [...avoid, key]);
+  const q = query.trim().toLowerCase();
+  return (
+    <section className="avoid" aria-label="Avoided rewards">
+      <div className="avoid-head">
+        <h4>Avoid rewards</h4>
+        <span className="muted">{avoid.length ? `${avoid.length} on the list` : "None"}</span>
+        <button type="button" className="btn small ghost" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? "Done" : "Choose rewards"}</button>
+      </div>
+      {avoid.length > 0 && (
+        <div className="avoid-chips">
+          {avoid.map((key) => {
+            const [kind, id] = key.split(":");
+            return <button key={key} type="button" className={`chip removable kind-${kind}`} aria-label={`Stop avoiding ${pretty(id)}`} onClick={() => toggle(key)}>{pretty(id)} <span aria-hidden="true">×</span></button>;
+          })}
+          <button type="button" className="link clear-avoid" onClick={() => onChange([])}>Clear all</button>
+        </div>
+      )}
+      {open && (
+        <div className="avoid-picker">
+          <input type="search" value={query} placeholder="Filter rewards" aria-label="Filter rewards" onChange={(e) => setQuery(e.target.value)} />
+          {KIND_GROUPS.map(([kind, label]) => {
+            const items = BONUSES.filter((b) => b.kind === kind && (!q || pretty(b.id).toLowerCase().includes(q))).sort((a, b) => pretty(a.id).localeCompare(pretty(b.id)));
+            return items.length > 0 && (
+              <fieldset key={kind} className="avoid-group">
+                <legend>{label}</legend>
+                {items.map((b) => {
+                  const key = bonusKey(b.kind, b.id);
+                  return <button key={key} type="button" aria-pressed={avoid.includes(key)} className={`chip toggle kind-${kind}`} onClick={() => toggle(key)}>{pretty(b.id)}</button>;
+                })}
+              </fieldset>
+            );
+          })}
+        </div>
+      )}
+      <p className="hint">When an avoided reward is offered, the second option is taken automatically. Later offers change as a result, and they are checked too.</p>
+    </section>
   );
 }
 

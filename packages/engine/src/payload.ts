@@ -16,6 +16,8 @@ export interface SpecBrute {
   levelUps: number;
   gfx: string;
   choices: Choice[];
+  /** Laboratory only: rewards ("Kind:ID") to steer away from; never sent to the engine or the SWF */
+  avoid?: string[];
 }
 
 /** Team property object (_p0/_p1) in plain form; _bits fields are hex strings. */
