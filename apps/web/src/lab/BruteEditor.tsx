@@ -8,8 +8,8 @@ import { SwfPlayer } from "../swf/SwfPlayer";
 import { CommitInput, parseIntStrict } from "../ui/CommitInput";
 import type { LabAction } from "./state";
 
-type Tab = "levels" | "look" | "inventory" | "bits";
-const TABS: [Tab, string][] = [["levels", "Level-ups"], ["look", "Appearance"], ["inventory", "Inventory"], ["bits", "Bits"]];
+type Tab = "levels" | "look" | "bits";
+const TABS: [Tab, string][] = [["levels", "Level-ups"], ["look", "Appearance"], ["bits", "Bits"]];
 
 interface Props {
   index: number;
@@ -29,6 +29,7 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
 
   return (
     <section className="editor panel" aria-label={`Editing ${brute.name}`}>
+      <div className="editor-main">
       <div className="editor-top">
       <div className="editor-head">
         <Portrait gfx={brute.gfx} name={brute.name} lazy={false} className="editor-portrait" />
@@ -44,7 +45,7 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
                 update({ levelUps: levelUpsFor(v) });
               }} />
             </label>
-            <label>Id
+            <label className="id-field">Id
               <span className="input-with-btn">
                 <CommitInput value={brute.id} inputMode="numeric" onCommit={(t) => {
                   const v = parseIntStrict(t); if (!isValidSeedId(v)) return "Id is a whole number from 1 to 2147483647.";
@@ -86,9 +87,10 @@ export function BruteEditor({ index, brute, original, desc, spec, dispatch, onSa
       <div className="tab-panel" role="tabpanel">
         {tab === "levels" && desc && <LevelUps brute={brute} desc={desc} originalLevelUps={original?.levelUps ?? brute.levelUps} update={update} />}
         {tab === "look" && <Appearance brute={brute} update={update} />}
-        {tab === "inventory" && <InventoryTab brute={brute} defaultLang={spec.lang} />}
         {tab === "bits" && <Bits brute={brute} update={update} />}
       </div>
+      </div>
+      <InventoryPanel brute={brute} defaultLang={spec.lang} />
     </section>
   );
 }
@@ -174,17 +176,22 @@ function Appearance({ brute, update }: { brute: SpecBrute; update: (p: Partial<S
   );
 }
 
-function InventoryTab({ brute, defaultLang }: { brute: SpecBrute; defaultLang: string }) {
+/** The original inventory.swf, always shown beside the editor (between stats and tabs on phones). */
+function InventoryPanel({ brute, defaultLang }: { brute: SpecBrute; defaultLang: string }) {
   const [lang, setLang] = useState((INVENTORY_LANGS as readonly string[]).includes(defaultLang) ? defaultLang : "en");
   const [ownedOnly, setOwnedOnly] = useState(false);
   return (
-    <div className="inventory">
-      <div className="row">
-        <label>Language <select value={lang} onChange={(e) => setLang(e.target.value)}>{INVENTORY_LANGS.map((l) => <option key={l}>{l}</option>)}</select></label>
-        <label className="check"><input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} /> Only what this brute owns (experimental)</label>
+    <aside className="editor-inventory" aria-label={`Inventory of ${brute.name}`}>
+      <div className="inventory-controls">
+        <label className="inline">Language
+          <select value={lang} onChange={(e) => setLang(e.target.value)}>{INVENTORY_LANGS.map((l) => <option key={l}>{l}</option>)}</select>
+        </label>
+        <label className="check" title="Experimental: hide what this brute doesn't have">
+          <input type="checkbox" checked={ownedOnly} onChange={(e) => setOwnedOnly(e.target.checked)} /> Owned only
+        </label>
       </div>
-      <SwfPlayer swf="inventory.swf" params={inventoryParams(brute, { lang, ownedOnly })} label={`Inventory of ${brute.name}`} className="inventory-swf" />
-    </div>
+      <SwfPlayer swf="inventory-transparent.swf" params={inventoryParams(brute, { lang, ownedOnly })} label={`Inventory of ${brute.name}`} className="inventory-swf" transparent />
+    </aside>
   );
 }
 

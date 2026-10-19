@@ -36,3 +36,10 @@ Patched SHA-256: cc27c5888345489f5894bdfa7248b4f422a3e4fa5a572b253799b3c959ca487
 | perso.swf | d51c64b18809293458e6f607d5411c6733e20aab8369fa3314ccc2fc1880db0e |
 | inventory.swf | 4472050814fe6b7e1b05f21cc9da2b5e27958c0744056e1c93737e4bab39caac |
 | mini_perso.swf | bf4a3ac17e3e70f5c4e0d88bbf93dad1ccb2162b680f93b98e91ce73ed29c513 |
+
+### Derived: inventory-transparent.swf (apps/web/public/swf)
+
+Generated from the original `inventory.swf` by `apps/web/scripts/derive-inventory.mjs` (the original stays unchanged).
+The only change empties the exported sprite `mcBg` (character 272): a full-stage `#faf8c3` rectangle that the
+inventory script attaches at depth 0 as a backdrop and never reads. With Ruffle's `wmode: transparent` the
+inventory then renders on the page's own background. SHA-256: db8dd76706f55ce37722c963f521c980cb8b81f98272ef3a32d6184f74ead2b0
