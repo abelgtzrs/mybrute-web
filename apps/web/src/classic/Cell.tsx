@@ -55,28 +55,27 @@ export function CellPage() {
         </section>
 
         <div className="col cell-main">
-          <section className="panel editor-card" aria-label="Attributes, kit and inventory">
-            <div className="editor-info">
+          {/* one section: attributes, kit and level-up log on the left; the inventory fills the right side */}
+          <section className="panel cell-card" aria-label="Attributes, level-ups and inventory">
+            <div className="cell-card-info">
               <h2>Attributes</h2>
               <AttributeRow a={data.attributes} />
               <KitList kit={data.kit} />
               {!data.check && <p className="warning">The progression check failed for this brute. Please report it.</p>}
+              <h2 id="levels-title" className="cell-levels-title">Level-ups</h2>
+              {data.levelUps.length === 0 ? <p className="muted">No level-ups yet. Win fights to earn experience.</p> : (
+                <ol className="levelup-log" aria-labelledby="levels-title">
+                  {[...data.levelUps].reverse().map((l) => (
+                    <li key={l.index}>
+                      <span className="lv">Lv {l.level}</span>
+                      <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{l.chosen.text}</span>
+                      <span className="muted small">instead of {l.other.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
             <InventoryPanel brute={labBrute} />
-          </section>
-          <section className="panel cell-levels" aria-labelledby="levels-title">
-            <h2 id="levels-title">Level-ups</h2>
-            {data.levelUps.length === 0 ? <p className="muted">No level-ups yet. Win fights to earn experience.</p> : (
-              <ol className="levelup-log">
-                {[...data.levelUps].reverse().map((l) => (
-                  <li key={l.index}>
-                    <span className="lv">Lv {l.level}</span>
-                    <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{l.chosen.text}</span>
-                    <span className="muted small">instead of {l.other.text}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
           </section>
         </div>
 
