@@ -6,6 +6,7 @@ import { FightRow } from "../classic/FightRow";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow, KitList, XpBar } from "../ui/BruteKit";
 import { useApi } from "../useApi";
+import { useNames } from "../ui/language";
 import { useListParams } from "./Layout";
 import { AdminAction, day, LogList, Pager, SearchBox, Segments, useFlash } from "./kit";
 
@@ -47,6 +48,7 @@ export function AdminBrutes() {
 export function AdminBrute() {
   const { id = "" } = useParams();
   const { data, error, reload } = useApi(() => admin.brute(id), [id]);
+  const { option } = useNames();
   const [flash, setFlash] = useFlash();
   const nav = useNavigate();
   if (error) return <p className="page-status error" role="alert">{error.message} <Link to="/admin/brutes">Back to brutes</Link></p>;
@@ -87,13 +89,13 @@ export function AdminBrute() {
             {[...data.levelUps].reverse().map((l) => (
               <li key={l.index}>
                 <span className="lv">Lv {l.level}</span>
-                <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{l.chosen.text}</span>
-                <span className="muted small">instead of {l.other.text}</span>
+                <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{option(l.chosen)}</span>
+                <span className="muted small">instead of {option(l.other)}</span>
               </li>
             ))}
           </ol>
         )}
-        {data.pendingOptions && <p className="hint">Waiting for {data.owner.username} to choose: {data.pendingOptions[0].text} or {data.pendingOptions[1].text}.</p>}
+        {data.pendingOptions && <p className="hint">Waiting for {data.owner.username} to choose: {option(data.pendingOptions[0])} or {option(data.pendingOptions[1])}.</p>}
       </section>
 
       <div className="admin-detail-side">
@@ -123,6 +125,7 @@ export function AdminBrute() {
 }
 
 function BruteActions({ data, done, onDeleted }: { data: Cell & { owner: { id: string; username: string } }; done: (m: string) => void; onDeleted: () => void }) {
+  const { option } = useNames();
   const b = data.brute;
   const [xp, setXp] = useState("");
   const [name, setName] = useState("");
@@ -154,10 +157,10 @@ function BruteActions({ data, done, onDeleted }: { data: Cell & { owner: { id: s
       </div>
 
       <div className="admin-action">
-        <span><strong>Last level-up</strong><span className="muted small">{last ? `Level ${last.level}: ${last.chosen.text}.` : "None yet."}</span></span>
+        <span><strong>Last level-up</strong><span className="muted small">{last ? `Level ${last.level}: ${option(last.chosen)}.` : "None yet."}</span></span>
         <AdminAction label="Undo" danger title={`Undo ${b.name}'s level ${last?.level ?? ""} reward?`} confirmLabel="Undo level-up" disabled={!last}
           description={last ? <>
-            {b.name} goes back to level {b.level - 1} and gets back the XP the level-up cost. The same two options ({last.chosen.text} or {last.other.text}) are offered again, because offers only depend on earlier choices. Opponents already found are dropped.
+            {b.name} goes back to level {b.level - 1} and gets back the XP the level-up cost. The same two options ({option(last.chosen)} or {option(last.other)}) are offered again, because offers only depend on earlier choices. Opponents already found are dropped.
           </> : undefined}
           onConfirm={async () => { await admin.undoLevelUp(b.id); return `${b.name} is back to level ${b.level - 1}, with the level-up waiting.`; }} onDone={done} />
       </div>

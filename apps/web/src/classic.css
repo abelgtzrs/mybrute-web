@@ -81,6 +81,8 @@
 .create-preview p { margin: 0; }
 .create-form { overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 10px; align-content: start; }
 .create-form h2 { margin: 8px 0 0; }
+.create-import { display: grid; grid-template-columns: minmax(0, 1fr) 6em; gap: 6px 10px; padding-bottom: 12px; border-bottom: 1.5px solid var(--paper-edge); }
+.create-import .hint { grid-column: 1 / -1; margin: 0; }
 @media (max-width: 699px) { .create-grid { grid-template-columns: minmax(0, 1fr); overflow-y: auto; } .create-preview, .create-form { overflow: visible; } }
 
 /* the cell */

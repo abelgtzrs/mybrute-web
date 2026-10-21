@@ -1,5 +1,6 @@
 // Attribute row and kit chips, shared by the Laboratory and Classic screens.
-export const pretty = (s: string) => s.split("_").map((w) => w.charAt(0) + w.slice(1).toLowerCase()).join(" ");
+import type { BonusKind } from "@mybrute/engine";
+import { useNames } from "./language";
 
 export interface AttributeValues { strength: number; agility: number; speed: number; life: number }
 export interface KitValues { weapons: string[]; supers: string[]; followers: string[]; perms: string[]; talents: string[] }
@@ -22,12 +23,13 @@ const GROUPS: [keyof KitValues, string, string][] = [
 ];
 
 export function KitList({ kit, hideEmpty = false }: { kit: KitValues; hideEmpty?: boolean }) {
+  const { name } = useNames();
   return (
     <dl className="kit">
       {GROUPS.filter(([key]) => !hideEmpty || kit[key].length).map(([key, label, kind]) => (
         <div key={key}>
           <dt>{label}</dt>
-          <dd>{kit[key].length ? kit[key].map((x) => <span key={x} className={`chip kind-${kind}`}>{pretty(x)}</span>) : <span className="muted">None</span>}</dd>
+          <dd>{kit[key].length ? kit[key].map((x) => <span key={x} className={`chip kind-${kind}`}>{name(kind as BonusKind, x)}</span>) : <span className="muted">None</span>}</dd>
         </div>
       ))}
     </dl>

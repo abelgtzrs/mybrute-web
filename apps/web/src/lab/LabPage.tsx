@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  INVENTORY_LANGS, buildParams, describe, extractStats, importPayload, newLabFight, randomSeed, runFight, validateSpec,
+  INVENTORY_LANGS, bitsToHex, buildParams, describe, extractPetStats, extractStats, hexToChoices, importPayload, newLabFight, randomSeed, runFight, supportOf, validateSpec,
   type Description, type FightSpec, type SpecBrute,
 } from "@mybrute/engine";
 import { registerEnd, swfUrl } from "../swf/ruffle";
 import { CommitInput, parseIntStrict } from "../ui/CommitInput";
 import { ArenaPanel, type Playback } from "./ArenaPanel";
+import { StatsPanel } from "./StatsPanel";
 import { Bench } from "./Bench";
-import { BruteEditor } from "./BruteEditor";
+import { AvoidRewards, BruteEditor, type SaveTarget } from "./BruteEditor";
 import { PayloadDialog } from "./PayloadDialog";
-import { initLab, labReducer } from "./state";
+import { initLab, labReducer, patchBrute } from "./state";
 import { useLabStore, type SavedBrute } from "./storage";
+import { useLanguage } from "../ui/language";
 import { VersusBoard } from "./VersusBoard";
 
 /** Params meant to leave the app (copy/save) use the same conventions as the original lab folder. */
@@ -19,14 +21,38 @@ const portable = (spec: FightSpec) => buildParams(spec, { mini: "mini_perso.swf"
 const fightLabel = (spec: FightSpec) => spec.brutes.map((b) => b.name).join(" vs ");
 
 /** On narrow screens only one section shows at a time; wide screens show all three and ignore this. */
-type Panel = "teams" | "editor" | "arena";
-const PANELS: [Panel, string][] = [["teams", "Teams"], ["editor", "Brute"], ["arena", "Arena"]];
+type Panel = "teams" | "editor" | "arena" | "stats";
+const PANELS: [Panel, string][] = [["teams", "Teams"], ["editor", "Brute"], ["arena", "Arena"], ["stats", "Stats"]];
 const PHONE = "(max-width: 699px)";
+const BESIDE = "(min-width: 1100px)";
+
+/** A bench save or a team's support brute open in the editor; changes stay here until saved. */
+type Draft = { key: string; brute: SpecBrute; original: SpecBrute } & ({ kind: "bench"; item: SavedBrute } | { kind: "support"; team: 0 | 1 });
+const toSupport = (b: SpecBrute) => ({ _s: b.id, _lvl: b.levelUps, _bits: bitsToHex(b.choices, b.levelUps), _gfx: b.gfx });
+const HEIGHT_KEY = "mybrute.lab.editorHeight";
+const TEAM_TARGETS: [SaveTarget, string][] = [["team:0", "Team 0"], ["team:1", "Team 1"]];
+
+/** Lab looks (lab.css). Workbench is the site's leather-and-paper; the rest are terminals. */
+const THEMES = [
+  ["slate", "Slate"], ["amber", "Amber CRT"], ["phosphor", "Green phosphor"], ["solarized", "Solarized"],
+  ["mainframe", "Mainframe"], ["printout", "Printout"], ["workbench", "Workbench"],
+] as const;
+type Theme = (typeof THEMES)[number][0];
+const THEME_KEY = "mybrute.labTheme";
+// shortcut: per-browser only; moves to the account when the appearance settings spec lands
+const readTheme = (): Theme => {
+  try { const t = localStorage.getItem(THEME_KEY); return THEMES.some(([k]) => k === t) ? (t as Theme) : "slate"; } catch { return "slate"; }
+};
 
 export function LabPage() {
   // "Try a copy in the Lab" from a Classic cell passes the brute in the navigation state; it is only a copy
   const location = useLocation();
-  const [state, dispatch] = useReducer(labReducer, (location.state as { brute?: SpecBrute } | null)?.brute, initLab);
+  const { lang } = useLanguage();
+  // new fights start in the site language; loaded payloads keep their own
+  const [state, dispatch] = useReducer(labReducer, (location.state as { brute?: SpecBrute } | null)?.brute, (copy) => {
+    const s = initLab(copy);
+    return { ...s, spec: { ...s.spec, lang } };
+  });
   const { spec, selected } = state;
   const store = useLabStore();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,12 +62,32 @@ export function LabPage() {
   const [playback, setPlayback] = useState<Playback | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "teams" : "editor"));
+  // from 1100px the editor sits beside arena/statistics, so the Arena tab is the one showing unless Stats is picked
+  const [editorBeside, setEditorBeside] = useState(() => window.matchMedia(BESIDE).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(BESIDE);
+    const on = () => setEditorBeside(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [editorHeight, setEditorHeight] = useState<number | null>(() => {
+    try { const v = Number(localStorage.getItem(HEIGHT_KEY)); return v > 0 ? v : null; } catch { return null; }
+  });
+  const changeEditorHeight = (h: number | null) => {
+    setEditorHeight(h);
+    try { if (h) localStorage.setItem(HEIGHT_KEY, String(h)); else localStorage.removeItem(HEIGHT_KEY); } catch { /* still applies for this visit */ }
+  };
   // picking or adding a brute opens it in the editor (matters when sections are shown one at a time)
   const act = useCallback((a: Parameters<typeof dispatch>[0]) => {
     dispatch(a);
-    if (a.type === "select" || a.type === "addBrute") setPanel("editor");
+    if (a.type === "select" || a.type === "addBrute") { setPanel("editor"); setDraft(null); }
   }, []);
+  const openDraft = (d: Draft) => { setDraft(d); dispatch({ type: "select", index: null }); setPanel("editor"); };
+  const editBench = (item: SavedBrute) => openDraft({ kind: "bench", key: "b" + item.key, item, brute: structuredClone(item.brute), original: structuredClone(item.brute) });
   const toastTimer = useRef<number>();
+  const [theme, setTheme] = useState(readTheme);
+  const pickTheme = (t: Theme) => { setTheme(t); try { localStorage.setItem(THEME_KEY, t); } catch { /* still applies for this visit */ } };
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -67,6 +113,7 @@ export function LabPage() {
     try { return runFight(spec); } catch { return null; }
   }, [spec, errors]);
   const stats = useMemo(() => (sim ? extractStats(sim) : null), [sim]);
+  const pets = useMemo(() => (sim ? extractPetStats(sim) : []), [sim]);
   const problems = useMemo(() => {
     const s = new Set<number>();
     spec.brutes.forEach((b, i) => errors.some((e) => e.includes(b.name || `Brute ${b.id}`) || e.includes(String(b.id))) && s.add(i));
@@ -118,17 +165,54 @@ export function LabPage() {
     dispatch({ type: "addBrute", brute: { ...structuredClone(b), team } });
   };
 
+  const editSupport = (team: 0 | 1) => {
+    const st = supportOf(spec, team);
+    if (!st) return;
+    const b: SpecBrute = { name: `Team ${team} support`, id: st.id, team, levelUps: st.levelUps, gfx: st.gfx, choices: hexToChoices(st.bits, st.levelUps) };
+    openDraft({ kind: "support", key: "s" + team, team, brute: b, original: structuredClone(b) });
+  };
+  const draftDesc = useMemo(() => {
+    if (!draft) return null;
+    try { return describe(draft.brute.id, draft.brute.levelUps, draft.brute.choices); } catch { return null; }
+  }, [draft]);
+
+  const saveTo = (target: SaveTarget, b: SpecBrute) => {
+    if (target === "bench") return saveBrute(b);
+    if (target === "origin" && draft?.kind === "bench") {
+      // the stores only add and delete, so overwriting is a new save under the same name, then dropping the old one
+      const old = draft.item;
+      store.saveBrute(old.label, b)
+        .then((item) => store.deleteBrute(old.key).then(() => item))
+        .then((item) => { setDraft((d) => (d && d.kind === "bench" ? { ...d, item, original: structuredClone(b) } : d)); void reloadBench(); notify(`Saved ${old.label} on the bench.`); }, (e: Error) => notify(e.message));
+      return;
+    }
+    const supportTeam = target === "origin" && draft?.kind === "support" ? draft.team : target === "support:0" ? 0 : target === "support:1" ? 1 : null;
+    if (supportTeam !== null) {
+      dispatch({ type: "setTeam", team: supportTeam, patch: { _st: toSupport(b) } });
+      if (target === "origin") setDraft((d) => d && { ...d, original: structuredClone(b) });
+      return notify(`Saved as the team ${supportTeam} support brute.`);
+    }
+    const team = target === "team:1" ? 1 : 0;
+    if (spec.brutes.some((x) => x.id === b.id)) return notify(`Id ${b.id} is already in this fight. Change the id before adding it.`);
+    act({ type: "addBrute", brute: { ...structuredClone(b), team } });
+    notify(`Added ${b.name} to team ${team}.`);
+  };
+
   const sel = selected !== null ? spec.brutes[selected] : undefined;
+  const updateDraft = (patch: Partial<SpecBrute>) => setDraft((d) => d && { ...d, brute: patchBrute(d.brute, patch) });
+  const updateSelected = (patch: Partial<SpecBrute>) => { if (selected !== null) dispatch({ type: "updateBrute", index: selected, patch }); };
+  // the brute open in the editor, for the avoid list in the teams column
+  const editing = draft ? { brute: draft.brute, update: updateDraft } : sel ? { brute: sel, update: updateSelected } : null;
 
   return (
-    <div className="lab">
+    <div className={theme === "workbench" ? "lab" : "lab term"} data-theme={theme}>
       <div className="toolbar" role="toolbar" aria-label="Fight">
         <div className="toolbar-title">
           <h1>Laboratory</h1>
           <span className="muted">{state.sourceLabel}</span>
         </div>
         <div className="toolbar-actions">
-          <button type="button" className="btn ghost" onClick={() => { dispatch({ type: "load", spec: newLabFight(), label: "New fight" }); setPlayback(null); }}>New fight</button>
+          <button type="button" className="btn ghost" onClick={() => { dispatch({ type: "load", spec: { ...newLabFight(), lang }, label: "New fight" }); setPlayback(null); }}>New fight</button>
           <button type="button" className="btn ghost" onClick={() => setDialogOpen(true)}>Open fight</button>
           <button type="button" className="btn ghost" onClick={savePayload}>Save fight</button>
           <button type="button" className="btn ghost" onClick={copyParams}>Copy payload</button>
@@ -148,31 +232,62 @@ export function LabPage() {
               {[...new Set([spec.lang, ...INVENTORY_LANGS])].map((l) => <option key={l}>{l}</option>)}
             </select>
           </label>
+          <label>Theme
+            <select value={theme} onChange={(e) => pickTheme(e.target.value as Theme)}>
+              {THEMES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+            </select>
+          </label>
           <button type="button" className="btn play" onClick={play} disabled={errors.length > 0}>Play fight</button>
         </div>
       </div>
 
       <div className="workspace" data-panel={panel}>
         <div className="col col-teams">
-          <VersusBoard spec={spec} descs={descs} selected={selected} problems={problems} dispatch={act} />
-          <Bench items={bench} takenIds={spec.brutes.map((b) => b.id)} onUse={applyBenchBrute}
+          <VersusBoard spec={spec} descs={descs} selected={selected} problems={problems} dispatch={act} editingSupport={draft?.kind === "support" ? draft.team : null} onEditSupport={editSupport} />
+          {editing && (
+            <div className="panel avoid-panel">
+              <AvoidRewards name={editing.brute.name} avoid={editing.brute.avoid ?? []} onChange={(list) => editing.update({ avoid: list })} />
+            </div>
+          )}
+          <Bench items={bench} takenIds={spec.brutes.map((b) => b.id)} onUse={applyBenchBrute} onEdit={editBench} editing={draft?.kind === "bench" ? draft.item.key : null}
             where={store.where} onDelete={(key) => { store.deleteBrute(key).then(reloadBench, (e: Error) => notify(e.message)); }} />
         </div>
         <div className="col col-editor">
-          {sel && selected !== null ? (
-            <BruteEditor key={selected} index={selected} brute={sel} original={state.originals[selected]} desc={descs[selected]} spec={spec} dispatch={dispatch} onSave={saveBrute} />
+          {draft ? (
+            <BruteEditor key={draft.key} brute={draft.brute} original={draft.original} desc={draftDesc} lang={spec.lang}
+              source={draft.kind === "bench" ? `Bench: ${draft.item.label}` : `Team ${draft.team} support`}
+              takenIds={draft.kind === "support" ? spec.brutes.map((b) => b.id) : []}
+              update={updateDraft}
+              onReset={() => setDraft((d) => d && { ...d, brute: structuredClone(d.original) })}
+              onClose={() => setDraft(null)}
+              saveTargets={draft.kind === "bench"
+                ? [["origin", `Bench: ${draft.item.label}`], ["bench", "Bench, as a new save"], ...TEAM_TARGETS, ["support:0", "Team 0 support"], ["support:1", "Team 1 support"]]
+                : [["origin", `Team ${draft.team} support`], ["bench", "Bench"], ...TEAM_TARGETS, [`support:${1 - draft.team}` as SaveTarget, `Team ${1 - draft.team} support`]]}
+              onSaveTo={saveTo} height={editorHeight} onHeight={changeEditorHeight} />
+          ) : sel && selected !== null ? (
+            <BruteEditor key={selected} brute={sel} original={state.originals[selected]} desc={descs[selected]} lang={spec.lang}
+              takenIds={spec.brutes.filter((_, i) => i !== selected).map((b) => b.id)}
+              update={updateSelected}
+              onReset={() => dispatch({ type: "resetBrute", index: selected })}
+              teamCount={spec.brutes.filter((b) => b.team === sel.team).length}
+              onRemove={() => dispatch({ type: "removeBrute", index: selected })}
+              saveTargets={[["bench", "Bench"], ["support:0", "Team 0 support"], ["support:1", "Team 1 support"]]}
+              onSaveTo={saveTo} height={editorHeight} onHeight={changeEditorHeight} />
           ) : (
-            <section className="panel editor-empty"><p>Pick a brute to edit its level, choices, look and inventory.</p></section>
+            <section className="panel editor-empty"><p>Pick a brute, a bench save or a support brute to edit it here.</p></section>
           )}
         </div>
         <div className="col col-arena">
-          <ArenaPanel spec={spec} descs={descs} sim={sim} stats={stats} errors={errors} playback={playback} onPlay={play} notify={notify} />
+          <ArenaPanel spec={spec} descs={descs} sim={sim} errors={errors} playback={playback} onPlay={play} notify={notify} />
+        </div>
+        <div className="col col-stats">
+          <StatsPanel spec={spec} sim={sim} stats={stats} pets={pets} errors={errors} />
         </div>
       </div>
 
       <nav className="panel-tabs" aria-label="Lab sections">
         {PANELS.map(([key, label]) => (
-          <button key={key} type="button" data-for={key} aria-pressed={panel === key} onClick={() => setPanel(key)}>{label}</button>
+          <button key={key} type="button" data-for={key} aria-pressed={panel === key || (key === "arena" && panel !== "stats" && editorBeside)} onClick={() => setPanel(key)}>{label}</button>
         ))}
       </nav>
 

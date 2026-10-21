@@ -40,7 +40,7 @@ describe("admin access", () => {
     const r = (await admin.call("GET", "/api/admin/overview")).body;
     expect(r.counts).toMatchObject({ users: 2, admins: 1, brutes: 1, fights: 0 });
     expect(r.topBrutes[0]).toMatchObject({ name: "Hero", level: 1, owner: { username: "alice" } });
-    expect(r.settings).toEqual({ maxBrutesDefault: 5, dailyFights: 10 });
+    expect(r.settings).toEqual({ maxBrutesDefault: 5, dailyFights: 10, maxImportLevel: 1 });
   });
 });
 

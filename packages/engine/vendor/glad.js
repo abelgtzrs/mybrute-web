@@ -273,7 +273,7 @@ var LevelUp = $hxEnums["LevelUp"] = { __ename__:true,__constructs__:null
 	,LBonus: ($_=function(b) { return {_hx_index:1,b:b,__enum__:"LevelUp",toString:$estr}; },$_._hx_name="LBonus",$_.__params__ = ["b"],$_)
 };
 LevelUp.__constructs__ = [LevelUp.LCaracs,LevelUp.LBonus];
-var Gladiator = function(seed_id,name,fol) {
+var Gladiator = $hx_exports["Gladiator"] = function(seed_id,name,fol) { // MyBrute++ patch: expose Gladiator so its destiny (stance, zeroed reward weights) can be read
 	this.id = seed_id;
 	this.name = name;
 	this.fol = fol;

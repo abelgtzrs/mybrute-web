@@ -9,3 +9,7 @@ coverage/
 apps/web/public/ruffle/
 .pgdata/
 .pgdata-test/
+LaBrute/
+legacy/
+graphify-out
+docs/

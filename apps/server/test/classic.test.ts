@@ -196,4 +196,21 @@ describe("lab saves", () => {
   });
 });
 
+describe("importing a Lab brute", () => {
+  it("creates it at the chosen level with its choices, up to the admin's cap", async () => {
+    const p = await Player.register(h.app, "alice");
+    const brute = { name: "Imported", seedId: 18327968, gfx: "0;0;1;2;3;4;5;6;7;8;9;10;11;12;13;-1", levelUps: 3, choices: [1, 0, 1, 1] };
+    expect((await p.call("POST", "/api/brutes", brute)).status).toBe(400); // default cap is level 1
+    expect((await p.call("GET", "/api/brutes")).body.maxImportLevel).toBe(1);
+    await h.db.query("insert into settings (key, value) values ('max_import_level', '4')");
+    const r = await p.call("POST", "/api/brutes", brute);
+    expect(r.status).toBe(201);
+    const row = await bruteRow(r.body.brute.id);
+    expect(row.level_ups).toBe(3);
+    expect(hexToChoices(row.bits, 3)).toEqual([1, 0, 1]);
+    expect((await p.call("POST", "/api/brutes", { ...brute, name: "Too high", levelUps: 4 })).status).toBe(400);
+    expect((await p.call("POST", "/api/brutes", { ...brute, name: "Short", choices: [1] })).status).toBe(400);
+  });
+});
+
 void pendingOptions; void hexToChoices;

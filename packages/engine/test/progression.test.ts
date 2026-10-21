@@ -1,5 +1,5 @@
 import { describe as group, expect, it } from "vitest";
-import { bitsToHex, describe, displayLevel, hexToChoices, levelUpsFor, pendingOptions, persoParams, gfxHash, isValidSeedId } from "../src";
+import { bitsToHex, describe, destiny, nearestIdWithStance, randomChoices, displayLevel, hexToChoices, levelUpsFor, pendingOptions, persoParams, gfxHash, isValidSeedId } from "../src";
 
 group("progression adapters", () => {
   it("displayed level is level-ups + 1", () => {
@@ -44,5 +44,30 @@ group("progression adapters", () => {
     expect(isValidSeedId(2 ** 31 - 1)).toBe(true);
     expect(isValidSeedId(2 ** 31)).toBe(false);
     expect(isValidSeedId(0)).toBe(false);
+  });
+
+  it("destiny: banned rewards are never offered, and the rare ones are banned most of the time", () => {
+    let thiefBanned = 0, stances = 0;
+    for (let s = 0; s < 300; s++) {
+      const id = 1 + s * 7_158_013;
+      const { stance, banned } = destiny(id);
+      if (stance !== null) { stances++; expect([0, 1]).toContain(stance); }
+      if (banned.some((b) => b.id === "THIEF")) thiefBanned++;
+      const keys = new Set(banned.map((b) => b.kind + ":" + b.id));
+      if (s < 40) for (const lv of describe(id, 150, randomChoices(150)).levels)
+        for (const o of lv.opts) if (o.t === "b") expect(keys.has(o.kind + ":" + o.id)).toBe(false);
+    }
+    expect(thiefBanned).toBeGreaterThan(150); // banned with odds 2/3
+    expect(stances).toBeLessThan(10); // odds 1/1000
+  });
+
+  it("finds the nearest id with a stance", () => {
+    for (const stance of [0, 1]) {
+      const id = nearestIdWithStance(5000, stance)!;
+      expect(destiny(id).stance).toBe(stance);
+      for (let x = 5000 - Math.abs(id - 5000) + 1; x < 5000 + Math.abs(id - 5000); x++) if (x !== id) expect(destiny(x).stance).not.toBe(stance);
+      expect(nearestIdWithStance(5000, stance, [id])).not.toBe(id);
+    }
+    expect(destiny(nearestIdWithStance(5000, null)!).stance).toBeNull();
   });
 });

@@ -5,14 +5,15 @@ import { api } from "../api";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow } from "../ui/BruteKit";
 import { useApi } from "../useApi";
+import { useNames } from "../ui/language";
 
 const KIND_LABEL: Record<string, string> = { Weapons: "Weapon", Super: "Super", Followers: "Pet", Permanent: "Skill", Talent: "Talent" };
 const CARACS = ["Strength", "Agility", "Speed", "Life"];
 
 function OptionBody({ o }: { o: LevelOption }) {
+  const { name } = useNames();
   if (o.t === "b") {
-    const name = o.text.split(": ").slice(1).join(": ") || o.text;
-    return <><span className="option-kind">{KIND_LABEL[o.kind] ?? o.kind}</span><span className="option-name">{name}</span></>;
+    return <><span className="option-kind">{KIND_LABEL[o.kind] ?? o.kind}</span><span className="option-name">{name(o.kind, o.id)}</span></>;
   }
   return (
     <>

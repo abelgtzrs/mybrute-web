@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { FightLog, type EngineResult, type FighterStats, type FightSpec, type Description } from "@mybrute/engine";
+import { FightLog, localizeHistory, type EngineResult, type FightSpec, type Description } from "@mybrute/engine";
+import { useLanguage } from "../ui/language";
 import { SwfPlayer } from "../swf/SwfPlayer";
 
 export interface Playback { params: string; nonce: number; snapshot: string; ended: boolean }
@@ -8,14 +9,13 @@ interface Props {
   spec: FightSpec;
   descs: (Description | null)[];
   sim: EngineResult | null;
-  stats: Map<number, FighterStats> | null;
   errors: string[];
   playback: Playback | null;
   onPlay: () => void;
   notify: (msg: string) => void;
 }
 
-export function ArenaPanel({ spec, descs, sim, stats, errors, playback, onPlay, notify }: Props) {
+export function ArenaPanel({ spec, descs, sim, errors, playback, onPlay, notify }: Props) {
   const stale = playback !== null && playback.snapshot !== JSON.stringify(spec);
   return (
     <section className="arena panel" aria-label="Arena">
@@ -39,66 +39,20 @@ export function ArenaPanel({ spec, descs, sim, stats, errors, playback, onPlay, 
           <h3>Fix these before the fight can run</h3>
           <ul>{errors.map((e) => <li key={e}>{e}</li>)}</ul>
         </div>
-      ) : sim && stats ? (
-        <>
-          <Outcome spec={spec} sim={sim} stats={stats} />
-          <ActionLog spec={spec} descs={descs} sim={sim} notify={notify} />
-        </>
+      ) : sim ? (
+        <ActionLog spec={spec} descs={descs} sim={sim} notify={notify} />
       ) : null}
     </section>
   );
 }
 
-function Outcome({ spec, sim, stats }: { spec: FightSpec; sim: EngineResult; stats: Map<number, FighterStats> }) {
-  const rows: [string, (s: FighterStats) => number | string][] = [
-    ["Damage dealt", (s) => s.damageDealt],
-    ["Pet damage", (s) => s.petDamageDealt],
-    ["Damage taken", (s) => s.damageReceived],
-    ["Best hit", (s) => s.highestHit],
-    ["Dodges", (s) => s.dodges],
-    ["Blocks", (s) => s.blocks],
-    ["Counters", (s) => s.teamCounters.COUNTER],
-    ["Ripostes", (s) => s.teamCounters.RIPOSTE],
-    ["Weapons drawn", (s) => s.weaponsDrawn],
-    ["Disarms", (s) => s.disarms],
-    ["Pets killed", (s) => s.petsKilled],
-  ];
-  const shared = [...stats.values()].some((s) => s.teamShared);
-  return (
-    <div className="outcome">
-      <p className={"verdict" + (sim.win === null ? "" : ` team-${sim.win}`)}>
-        {sim.win === null ? "Draw: the arena's 1000-action limit was reached." : `Team ${sim.win} wins`}
-        <span className="muted"> in {sim.history.length} events</span>
-      </p>
-      <div className="table-scroll">
-        <table className="stats-table">
-          <thead>
-            <tr><th scope="col">Brute</th>{rows.map(([h]) => <th key={h} scope="col">{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {spec.brutes.map((b) => {
-              const s = stats.get(b.id);
-              return s && (
-                <tr key={b.id} className={`team-${b.team}`}>
-                  <th scope="row">{b.name}{s.result === "win" ? " ✓" : ""}</th>
-                  {rows.map(([h, f]) => <td key={h}>{f(s)}</td>)}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {shared && <p className="hint">With several brutes on a team, counters, ripostes and pet damage are team totals.</p>}
-    </div>
-  );
-}
-
 function ActionLog({ spec, descs, sim, notify }: { spec: FightSpec; descs: (Description | null)[]; sim: EngineResult; notify: (m: string) => void }) {
+  const { lang } = useLanguage();
   const [moves, setMoves] = useState(false);
   const lines = useMemo(() => {
     const glads = spec.brutes.map((b, i) => ({ id: b.id, name: b.name, team: b.team, life: descs[i]?.fin.life ?? 0 }));
-    return FightLog.format(sim.history, glads).filter((l) => moves || l.kind !== "move");
-  }, [spec, descs, sim, moves]);
+    return FightLog.format(localizeHistory(sim.history, lang), glads).filter((l) => moves || l.kind !== "move");
+  }, [spec, descs, sim, moves, lang]);
   const copy = () => navigator.clipboard.writeText(lines.map((l) => `${l.i}: ${l.text}`).join("\n")).then(() => notify("Log copied."), () => notify("Couldn't reach the clipboard."));
   return (
     <div className="log">

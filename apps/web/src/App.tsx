@@ -14,6 +14,7 @@ import { LevelUpPage } from "./classic/LevelUp";
 import { MyBrutesPage } from "./classic/MyBrutes";
 import { OpponentsPage } from "./classic/Opponents";
 import { LabPage } from "./lab/LabPage";
+import { LanguagePicker } from "./ui/language";
 
 export function App() {
   const { user, logout } = useAuth();
@@ -26,6 +27,7 @@ export function App() {
           <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span></NavLink>
           <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>
           {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
+          <LanguagePicker />
           {user ? (
             <span className="account">
               <span className="muted">{user.username}</span>
