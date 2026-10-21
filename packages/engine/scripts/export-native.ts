@@ -9,6 +9,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BONUSES } from "../src/generated/bonuses.js";
 import { BONUS_NAMES } from "../src/generated/names.ts";
+import { writeFixtures } from "./native-fixtures.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const engineDir = join(here, "..");
@@ -18,9 +19,6 @@ function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }
-
-// Task 3 moves this to scripts/native-fixtures.ts and fills it in.
-export function writeFixtures(_target: string): void {}
 
 // Lists every file under assets/ as a Qt resource (prefix /assets, so ":/assets/engine/glad.js").
 function writeQrc(target: string): void {
