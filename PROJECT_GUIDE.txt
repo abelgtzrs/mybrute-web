@@ -1,0 +1,1152 @@
+===============================================================================
+                    MYBRUTE++  -  A BEGINNER'S GUIDE TO THE WHOLE PROJECT
+===============================================================================
+
+Who this is for
+---------------
+You have never programmed before, and you want to understand what this project
+is, why it was built the way it was, and how every part of it fits together.
+Nothing here assumes prior knowledge. Every technical word is explained the
+first time it appears, and there is a glossary at the end (Part 13) you can
+jump to at any time.
+
+Read it in order the first time. Later you can use the table of contents to
+go straight to a part.
+
+Table of contents
+-----------------
+  Part 1   The game, and what this project is trying to do
+  Part 2   A crash course in the ideas you need
+  Part 3   The one big idea behind the design
+  Part 4   A tour of the folders
+  Part 5   The engine package: the heart of the project
+  Part 6   The labrute.js decoder, step by step
+  Part 7   The server: the referee and the record keeper
+  Part 8   The web app: what the player sees
+  Part 9   The life of one fight, from click to replay
+  Part 10  Tests: how the project proves it is right
+  Part 11  How the project was built (the process)
+  Part 12  Running it yourself
+  Part 13  Glossary
+
+
+===============================================================================
+PART 1 - THE GAME, AND WHAT THIS PROJECT IS TRYING TO DO
+===============================================================================
+
+1.1 La Brute
+------------
+"La Brute" (also sold as "El Bruto" and "MyBrute") was a small browser game
+made by the French studio Motion Twin around 2008 and run on their site
+Muxxu. You created a little cartoon fighter called a "brute". Your brute
+fought other players' brutes automatically: you didn't control the fight, you
+just watched it. Winning gave experience points (XP). With enough XP your
+brute "levelled up", and each time it did you were offered TWO rewards and
+had to pick ONE: maybe a new weapon, a special skill, a pet (a dog, a wolf, a
+bear...), or simply more strength, agility, speed or health.
+
+The game was built with Adobe Flash, a technology browsers used to run
+animated, interactive content. Browsers dropped support for Flash in 2020-2021,
+and the original servers are gone. The game, as it was, can no longer be
+played.
+
+1.2 What MyBrute++ is
+---------------------
+MyBrute++ is a new website that brings the game back. What makes it special
+is HOW it brings it back. It doesn't re-invent the rules by guessing. It uses:
+
+  * the ORIGINAL fighting rules and the ORIGINAL levelling rules, recovered
+    from the game and turned into code a modern browser and server can run;
+  * the ORIGINAL Flash animation files, played with "Ruffle", a modern
+    program that can play old Flash files without Flash.
+
+So when two brutes fight here, the result is exactly the result the original
+game would have produced, and you watch it in the original animation.
+
+1.3 The two modes
+-----------------
+CLASSIC MODE is "the game":
+  * You make an account and create brutes.
+  * Each brute gets 10 training fights per day.
+  * Fights give XP; when you have enough, you pick one of two real level-up
+    rewards.
+  * The SERVER (explained in Part 2) decides every fight, so nobody can
+    cheat.
+
+THE LABORATORY ("the Lab") is a sandbox for experiments:
+  * Build any brute at any level with any choices and any appearance.
+  * Run 1-vs-1 or team fights.
+  * Paste in fight data captured from the original game years ago and replay
+    it.
+  * Nothing you do in the Lab ever changes your Classic brutes.
+
+There are also ADMIN TOOLS so the people running the site can manage players,
+brutes, fights and settings.
+
+
+===============================================================================
+PART 2 - A CRASH COURSE IN THE IDEAS YOU NEED
+===============================================================================
+
+This part explains the general ideas behind any website like this one. Skip
+anything you already know.
+
+2.1 Programs and code
+---------------------
+A PROGRAM is a list of instructions for a computer. CODE is those instructions
+written as text in a PROGRAMMING LANGUAGE, a strict, precise language the
+computer can follow. A FILE of code is just a text file; you could open any of
+the files in this project in Notepad.
+
+A FUNCTION is a named, reusable piece of code that takes some inputs and
+produces an output. Example in plain words:
+
+    function displayLevel(levelUps):  give back levelUps + 1
+
+Then anywhere in the project, "displayLevel(4)" means "5". This exact
+function exists in packages/engine/src/progression.ts.
+
+A VARIABLE is a named box that holds a value. An OBJECT is a bundle of named
+values, like a form with fields:
+
+    { name: "Warcott77", level: 66, team: 0 }
+
+An ARRAY (or "list") is an ordered sequence: [3, 1, 4, 1, 5].
+
+2.2 The languages used here
+---------------------------
+  * JAVASCRIPT (files ending in .js): the language web browsers understand.
+    It can also run outside browsers, on a server, using a program called
+    NODE.JS ("Node").
+  * TYPESCRIPT (files ending in .ts or .tsx): JavaScript plus "types". A
+    type is a promise about what kind of value something holds ("this is a
+    number", "this is a list of brutes"). A tool called the TypeScript
+    compiler checks those promises BEFORE the program runs and catches many
+    mistakes early. TypeScript is turned into JavaScript before it runs.
+  * TSX: TypeScript that also contains HTML-like markup, used by React
+    (2.6) to describe what appears on screen.
+  * SQL (files ending in .sql): the language used to talk to databases (2.5).
+  * CSS (files ending in .css): describes how a web page LOOKS (colours,
+    sizes, layout).
+  * HAXE: the language the ORIGINAL game's logic was written in. Haxe can be
+    "compiled" (translated) into JavaScript. That is how the original rules
+    were turned into the glad.js and fight.js files in this project.
+
+2.3 Client and server
+---------------------
+A website has two halves that talk to each other over the internet:
+
+  * The CLIENT is the part running in YOUR browser on YOUR device: the pages,
+    buttons and animations you see. In this project that's "apps/web".
+  * The SERVER is a program running on a computer somewhere else, always on,
+    shared by every player. It keeps the official records and makes the
+    decisions that must be trusted. In this project that's "apps/server".
+
+Why split it? Because anything running on your own device can be tampered
+with by you. If your browser decided who won a fight, a cheater could just
+edit it to always win. So in Classic mode the server decides, and the
+browser only DISPLAYS what the server decided.
+
+2.4 How they talk: HTTP and an API
+----------------------------------
+The browser and server exchange messages using HTTP, the same system that
+loads every web page. The browser sends a REQUEST ("give me my brutes",
+"start a fight against opponent #812"), and the server sends back a RESPONSE,
+usually data written in JSON (a text format for objects and arrays).
+
+The set of requests a server understands is called its API. In this project
+every API address starts with /api/, for example:
+
+    GET  /api/brutes                   "list my brutes"
+    POST /api/brutes                   "create a brute"
+    POST /api/auth/login               "sign me in"
+
+GET means "read something", POST means "do or create something".
+
+2.5 Databases
+-------------
+A DATABASE stores information permanently, so it survives the server being
+restarted. This project uses POSTGRESQL ("Postgres"), which stores data in
+TABLES, like spreadsheets: each table has named COLUMNS and each entry is a
+ROW. For example the "brutes" table has a row for every brute, with columns
+like name, owner, level_ups and xp.
+
+You talk to Postgres in SQL, e.g.:
+
+    select * from brutes where owner_id = 7
+
+A TRANSACTION is a group of database changes that either ALL happen or NONE
+happen. If the server is updating XP, marking an opponent as used, and saving
+the fight, and something fails halfway, the transaction is "rolled back" and
+nothing is half-saved. This project uses transactions for every change.
+
+A MIGRATION is a file describing how to build or change the database's
+tables. Migrations are numbered (001_init.sql, 002_admin.sql) and applied in
+order, so every copy of the database ends up with the same shape.
+
+2.6 React
+---------
+REACT is a popular tool for building web pages out of COMPONENTS: small,
+reusable pieces of screen, each written as a function. "Cell" (a brute's
+page), "FightView" (the fight screen) and "SwfPlayer" (a box that plays a
+Flash file) are components. React redraws the right parts of the page when
+the underlying data changes.
+
+2.7 Flash, SWF files and Ruffle
+-------------------------------
+Flash content is stored in files ending in .swf. A SWF holds pictures,
+animations and its own little program (written in ActionScript). The
+original La Brute site used several SWFs:
+
+  * client.swf       - the fight: arena, brutes, animations, sounds
+  * perso.swf        - draws one brute (used for portraits)
+  * mini_perso.swf   - draws the small brute heads used inside a fight
+  * inventory.swf    - shows a brute's weapons, skills and pets
+
+A web page gives a SWF its starting information through FLASHVARS, a string
+of settings that looks like a web address's query part:
+
+    data=xxxx&k=yyyy&lang=en
+
+RUFFLE is a modern Flash player written for today's browsers. This project
+ships its own copy of Ruffle and uses it to play the original SWFs.
+
+2.8 Randomness and seeds
+------------------------
+Games need randomness (does this attack hit? which reward is offered?).
+Computers usually fake randomness with a RANDOM NUMBER GENERATOR (RNG): a
+formula that produces numbers that look random. The trick: start the formula
+from the same starting number, called the SEED, and you get EXACTLY the same
+sequence of "random" numbers every time.
+
+This is the single most important idea in the whole project. In La Brute:
+  * a brute's identity number (its "id") is the seed for its levelling, so a
+    given id always offers the same rewards, given the same earlier choices;
+  * a fight has its own seed, so the same two brutes with the same fight seed
+    always produce exactly the same fight, blow by blow.
+
+This property is called being DETERMINISTIC: same inputs, same outputs,
+always.
+
+2.9 Packages, npm, and a monorepo
+---------------------------------
+A PACKAGE is a bundle of code with a name, which other code can use. NPM
+(Node Package Manager) downloads packages written by other people (React,
+Fastify, etc.) and runs project commands. "package.json" files list a
+package's name, the other packages it needs ("dependencies"), and its
+commands ("scripts", e.g. "npm test").
+
+This project is a MONOREPO: one repository holding several of its own
+packages that use each other. The top-level package.json says the packages
+live under packages/* and apps/*.
+
+2.10 Git
+--------
+GIT keeps the full history of every change ever made to the files. Each
+saved change is a COMMIT, with a message describing it. A BRANCH is a
+separate line of history where work can happen without disturbing the main
+one. You can see this project's commits with "git log".
+
+2.11 Tests
+----------
+A TEST is code that checks other code. It runs a function with known inputs
+and complains if the output isn't what's expected. This project uses VITEST
+to run its tests. Tests let developers change things confidently: if a
+change breaks something, a test fails.
+
+
+===============================================================================
+PART 3 - THE ONE BIG IDEA BEHIND THE DESIGN
+===============================================================================
+
+Almost every decision in this project follows from one principle:
+
+     DON'T REWRITE THE GAME. RUN THE ORIGINAL, AND BUILD AROUND IT.
+
+Writing new code that "behaves like" La Brute would always be slightly
+wrong: a damage formula off by one, a reward offered with the wrong
+probability. Fans would notice. So instead:
+
+  1. The original rules were recovered and compiled into JavaScript
+     (glad.js for levelling, fight.js for fighting). These files are kept
+     EXACTLY as they were, byte for byte, and checked with fingerprints
+     (SHA-256 hashes, see the glossary) so nobody edits them by accident.
+
+  2. All new code is a thin layer of "adapters" around those files. Adapters
+     translate between the old files' way of describing things and the new
+     app's way. They contain no game rules of their own.
+
+  3. Because the engine is deterministic (Part 2.8), you never need to store
+     a brute's stats or a fight's blow-by-blow. You store the INPUTS (the
+     brute's id, its level, its choices; the fight seed) and you can
+     re-create everything else exactly, whenever you want.
+
+     The database comment says it directly: "stats, weapons, skills and pets
+     are always recalculated from the engine, never stored as truth".
+
+  4. The original Flash fight player (client.swf) ALSO contains the fight
+     engine. It is not given a recorded fight; it is given the fight's
+     INPUTS, and it re-simulates the fight itself while animating it. Since
+     fight.js is the same engine, the server can run fight.js to learn the
+     result, save it, and then let client.swf replay the identical fight
+     for the player. Same inputs, same fight, on both sides.
+
+That last point is why the decoder (Part 6) matters so much: the "inputs"
+client.swf expects are packed in a scrambled, encoded format, and this
+project needs to read and write that format perfectly.
+
+
+===============================================================================
+PART 4 - A TOUR OF THE FOLDERS
+===============================================================================
+
+    mybrute-web/
+    |
+    |-- package.json        The top-level project file. Declares the
+    |                       workspace (packages/* and apps/*) and commands:
+    |                       dev, build, test, typecheck, start.
+    |-- README.md           The technical summary for developers.
+    |-- PROJECT_GUIDE.txt   This file.
+    |-- scripts/dev.mjs     Starts the server and the web app together for
+    |                       development, and stops both on Ctrl+C.
+    |
+    |-- packages/engine/    THE ENGINE: original game code + adapters.
+    |   |                   Used by BOTH the browser and the server.
+    |   |-- vendor/         The original files, untouched (Part 5.1).
+    |   |-- src/generated/  Automatically produced wrappers (Part 5.2).
+    |   |-- src/            The adapters, written in TypeScript (Part 5.3).
+    |   |-- scripts/        Tools that produce generated files and test data.
+    |   `-- test/           Tests and recorded "golden" results (Part 10).
+    |
+    |-- apps/server/        THE SERVER (Part 7).
+    |   |-- src/            The server's code.
+    |   |-- migrations/     The database's table definitions.
+    |   `-- test/           Tests that run against a real database.
+    |
+    |-- apps/web/           THE WEB APP (Part 8).
+    |   |-- index.html      The single HTML page the app starts from.
+    |   |-- src/            React components and styles.
+    |   |-- public/swf/     The original Flash files.
+    |   `-- scripts/        Helper tools (copy Ruffle, make a transparent
+    |                       version of inventory.swf).
+    |
+    `-- legacy/             The earlier, simpler versions of the project,
+                            kept for reference. The tests compare today's
+                            engine against these originals.
+
+Why is the engine its own package? Because both the browser and the server
+need the same rules. The server needs them to decide fights. The browser
+needs them to show a brute's stats, preview level-up options, power the Lab,
+and build the data for client.swf. Putting the engine in one shared package
+guarantees both sides use the exact same code.
+
+
+===============================================================================
+PART 5 - THE ENGINE PACKAGE: THE HEART OF THE PROJECT
+===============================================================================
+
+5.1 The original files (packages/engine/vendor/)
+------------------------------------------------
+"Vendored" means "copied in from someone else, kept as is". VENDOR.md in
+that folder lists every file with its fingerprint.
+
+  glad.js       The Gladiator: everything about a brute's PROGRESSION.
+                Its main function, GladAPI.describe(id, levelUps, choices),
+                answers: "a brute with this id, that has levelled up this
+                many times, making these choices: what was it offered at
+                each level-up, and what does it end up with?" The answer
+                lists the two options at every level-up and the final
+                strength, agility, speed, health, weapons, skills ("supers"),
+                pets ("followers"), permanent bonuses and talents.
+
+  fight.js      The Arena: the FIGHT engine. FightAPI.run(input) takes the
+                fight seed and the brutes and returns:
+                  * win: which team won (0 or 1), or nothing for a draw (the
+                    arena stops after 1000 actions);
+                  * history: the list of everything that happened, in order
+                    ("brute 18327968 attacks brute 25465676 for 12 damage",
+                    "pet dies", "weapon drawn", ...).
+                This file has ONE small, documented change ("patch"): the
+                result also includes per-team counters (dodges, blocks,
+                disarms...) and achievements. A test proves the patch didn't
+                change winners or histories.
+
+  labrute.js    The decoder/encoder for client.swf's data. Part 6 explains
+                it in full.
+
+  fightlog.js   Turns a fight history into readable sentences.
+
+  inventory.js  Builds the FlashVars for inventory.swf.
+
+5.2 Making the old files usable (scripts/gen-esm.mjs)
+-----------------------------------------------------
+Modern JavaScript shares code between files with "modules" (one file says
+"export X", another says "import X"). The old files predate that style: they
+attach their results to a global object instead.
+
+Rather than edit the old files (which is forbidden by the project's own
+rule), gen-esm.mjs writes a NEW file for each one, in src/generated/. Each
+new file contains:
+  1. a tiny fake "exports" or "module" object for the old code to write into;
+  2. the original code, pasted in completely unchanged;
+  3. one line that exports whatever the old code attached.
+
+The same script also reads the original table of every possible level-up
+reward (Data.BONUS_WEIGHTS) straight out of glad.js and saves it as
+bonuses.js, so the Lab can list every weapon, skill and pet without anyone
+typing that list by hand (and risking typos).
+
+A test checks that each generated file contains the original code
+unchanged.
+
+5.3 The adapters (packages/engine/src/)
+---------------------------------------
+Each file here is small and has one job.
+
+  vendor.ts       Describes, in TypeScript types, what each original
+                  function takes and returns. These descriptions were worked
+                  out by reading the old code. This gives the rest of the
+                  project type-checking on top of untyped old code.
+
+  progression.ts  Levelling rules, all delegated to glad.js. Key facts:
+                   * "levelUps" = how many times the brute levelled up.
+                     The level shown to players is levelUps + 1.
+                   * At each level-up the player picks option 0 or option 1.
+                     Those picks are stored very compactly as BITS (each
+                     pick is a 0 or a 1), packed 8 to a byte, the first pick
+                     in the lowest bit ("least significant bit first").
+                   * Picking option 1 also nudges the brute's random number
+                     generator, so it changes EVERY LATER offer. The offers
+                     at level-up number i depend only on choices before i.
+                   * pendingOptions() returns the two real options for the
+                     NEXT level-up.
+
+  gfx.ts          A brute's APPEARANCE ("gfx") is 16 numbers separated by
+                  semicolons: body type, ten body-part variants, five
+                  colours. perso.swf refuses to draw it unless it's also
+                  given a matching check number, calculated as:
+                      h = 1
+                      for each number x:  h = ((h * 11) XOR x) mod 2097151
+                  (XOR is explained in Part 6.) gfxHash() computes it;
+                  persoParams() builds perso.swf's FlashVars.
+
+  payload.ts      Builds and reads client.swf's fight data using labrute.js
+                  (Part 6.7). It also defines the FightSpec: the app's own
+                  clean description of a fight:
+                      seed, arena, brutes (name, id, team, levelUps, gfx,
+                      choices), team extras (p0, p1), language.
+                  runFight(spec) runs fight.js on it. validateSpec(spec)
+                  lists anything that would make the fight invalid (e.g.
+                  two fighters with the same id).
+
+  stats.ts        Reads a fight's history and adds up per-brute statistics:
+                  attacks, hits, damage dealt and received, damage by pets,
+                  biggest hit, dodges, blocks, weapons used, potions, and
+                  more. Its comments are honest about what CAN'T be worked
+                  out (e.g. the history doesn't say who a bomb hit, so bombs
+                  only count as "used").
+
+  avoid.ts        A Lab tool: "never take this reward". Per the code's own
+                  comments, when a reward (weapon, skill, pet...) is
+                  offered it is always option 0, and option 1 is a stat
+                  boost. So avoiding a reward means picking option 1 at that
+                  level-up. But that reshuffles every later offer, so the
+                  tool re-reads the offers after each forced choice and
+                  keeps going.
+
+  lab.ts          Random brutes and fights for the Lab.
+
+  inventory.ts    Builds inventory.swf's data using inventory.js.
+
+  index.ts        The package's front door: lists what other packages may
+                  import.
+
+
+===============================================================================
+PART 6 - THE LABRUTE.JS DECODER, STEP BY STEP
+===============================================================================
+
+6.1 The problem it solves
+-------------------------
+The original site started a fight by giving client.swf FlashVars like this
+(shortened):
+
+    data=%1F%C3%8Ab...(hundreds of characters)...&k=e2DzWVr4&lang=en
+
+  * "data" holds everything about the fight: the fight seed, the arena, and
+    every brute (name, id, team, level, appearance, level-up choices).
+  * "k" is a KEY used to scramble "data", so people couldn't just read it
+    and edit it.
+  * "lang" is the language for text in the animation.
+
+To replay old fights, to build new ones, and to let the Lab edit them, the
+project must be able to unscramble "data" into readable information and
+scramble it back in exactly the way client.swf expects. labrute.js does
+that. It was ported (translated) from earlier tools written in Python.
+
+The data is wrapped in four layers, like nested envelopes. From the outside
+in:
+
+    Layer 1  Percent-encoding    makes odd characters safe in FlashVars
+    Layer 2  Scrambling (cipher) with key k, plus a 4-character checksum
+    Layer 3  Haxe serialization  a text format for objects and lists
+    Layer 4  The actual fields   _seed, _glads, _gfx, _bits...
+
+Decoding peels them off in that order. Encoding wraps them back in reverse.
+
+6.2 Background: characters are numbers
+--------------------------------------
+Computers store every character as a number. "A" is 65, "B" is 66, "a" is
+97, "%" is 37, and so on. A BYTE is a number from 0 to 255. labrute.js treats
+the data as a string of bytes, one character per byte (this is called
+"latin1").
+
+6.3 Layer 1: percent-encoding (pdecode / pencode)
+--------------------------------------------------
+Some bytes can't safely sit inside FlashVars (spaces, "&", "=", unprintable
+bytes). So they're written as "%" followed by two HEXADECIMAL digits.
+Hexadecimal is counting in base 16, using 0-9 then A-F: "3B" means
+3*16 + 11 = 59, which is ";".
+
+  pdecode("0%3B1")  ->  "0;1"      (turns %XX back into one byte)
+  pencode("0;1")    ->  "0%3B1"    (keeps only letters, digits and _ . - ~;
+                                     everything else becomes %XX)
+
+6.4 Layer 2: the scrambling (state, decode, encode)
+---------------------------------------------------
+First, an operation called XOR ("exclusive or"). It works on the BITS of two
+numbers: write both numbers in binary (base 2, only 0s and 1s); for each
+position the result is 1 if the two bits differ and 0 if they're the same.
+
+    65 = 1000001
+     3 = 0000011
+    -----------  XOR
+    66 = 1000010        so  65 XOR 3 = 66   ("A" becomes "B")
+
+The magic property: doing XOR with the same number TWICE gives back the
+original: 66 XOR 3 = 65. So XOR with a secret number scrambles, and XOR with
+the same secret number unscrambles. The secret numbers are called the
+KEYSTREAM.
+
+(a) Building the keystream from the key: state(key)
+    The function makes a table S of 256 numbers:
+      * start with S = 0, 1, 2, ..., 127, 0, 1, 2, ..., 127
+        (each value is kept below 128);
+      * then walk through the table, and at each position i mix in the next
+        letter of the key to pick another position j (also kept below 128),
+        and swap the values at i and j.
+    The result is a shuffled table that depends entirely on the key. This
+    shuffling recipe is a cut-down version of a well-known one called RC4's
+    "key scheduling". Unlike full RC4, the table is then used directly:
+    byte number i of the data is XORed with S[i mod 256], repeating every
+    256 bytes.
+
+(b) The "zero" exception
+    If a byte of the message happens to EQUAL its keystream number, XOR
+    gives 0, and a 0 byte (called NUL) can't travel in FlashVars. So the
+    rule is: when the scrambled result would be 0, leave the original byte
+    unchanged instead.
+    When decoding, XOR on such a byte gives 0, which is the signal "this
+    byte was left as is", so the decoder keeps it unchanged. In the code:
+        out += (x !== 0) ? x : c
+    means "use the unscrambled byte x, unless it's 0, in which case use the
+    original byte c".
+
+(c) The checksum: detecting damage
+    A CHECKSUM is a short number calculated from all the data. If even one
+    character is changed or lost, the checksum almost certainly won't match.
+    This one works like a classic recipe called Adler-32:
+
+        a starts at S[0], b starts at S[1]
+        for every scrambled byte:
+            a = (a + byte) mod 65521
+            b = (b + a)    mod 65521
+
+    ("mod" means "remainder after dividing", so the numbers stay small.)
+    Bytes that were left unchanged by rule (b) count as 0.
+
+    The two numbers are then combined (a XOR (b shifted left by 8 bits)) and
+    written as 4 characters from a 64-character alphabet
+    (a-z, A-Z, 0-9, -, _). Each character carries 6 bits, so 4 characters
+    carry 24 bits.
+
+    Those 4 characters are stuck on the END of the scrambled data. When
+    decoding, the decoder recomputes them and compares. decode() returns:
+        { plain: the unscrambled text,  ok: true or false }
+    If ok is false, the key was wrong or the data got cut or altered when
+    someone copied it, and the app shows that error.
+
+    encode() does the same steps in reverse: XOR each byte (with the zero
+    exception), update the checksum, and add the 4 checksum characters.
+
+6.5 Layer 3: Haxe serialization (parseHx / serHx)
+-------------------------------------------------
+After unscrambling you get text like this (a real example, decoded from the
+first recorded fight in legacy/fights.json):
+
+    oy5:_miniy14:mini_perso.swfy5:_seedi90972473y3:_p0ny3:_p1n
+    y6:_gladsaoy5:_bitss12:qqzY%mzGu3cAy2:_ny9:Warcott77...
+
+It looks like nonsense, but it's a format for writing objects and lists as
+one line of text, made by the Haxe language. Each piece starts with a
+one-letter TAG saying what comes next:
+
+    o ... g          an Object starts ... ends
+    a ... h          an Array (list) starts ... ends
+    y5:_mini         a string of length 5: "_mini"
+                     (the text is still percent-encoded here)
+    i90972473        an integer: 90972473
+    z                the integer zero
+    n                null ("nothing")
+    t / f            true / false
+    d1.5             a decimal number
+    s12:qqzY%mzGu3cA raw bytes, 12 characters long, written in base64
+                     (see 6.6)
+    R6               "repeat string number 6 from earlier" (a space-saving
+                     trick: field names like "_bits" appear once and are
+                     then referred to by number)
+
+So the start reads as: an object with field "_mini" = "mini_perso.swf",
+field "_seed" = 90972473, field "_p0" = nothing, field "_p1" = nothing, field
+"_glads" = a list starting with an object whose "_bits" are some bytes,
+whose "_n" (name) is "Warcott77"...
+
+parseHx() reads this text into a TREE: a nested structure of nodes, where
+each node remembers its tag (k) and value (v), e.g.
+    { k: "i", v: "90972473" }
+serHx() writes a tree back out as text, recreating the "R" references the
+same way. Strings are kept in their percent-encoded form inside the tree.
+Together, these choices mean that reading a payload and writing it back
+without edits produces the original text exactly.
+
+6.6 Base64 and the level-up bits (b64enc / b64dec, bytesToChoices)
+------------------------------------------------------------------
+BASE64 is a way to write arbitrary bytes using only 64 safe characters, 6
+bits per character. Haxe uses its own alphabet ending in "%" and ":"
+(A-Z a-z 0-9 % :) instead of the usual "+" and "/".
+
+The "_bits" field holds a brute's level-up choices as bytes in this base64.
+After b64dec() turns it back into bytes, bytesToChoices() unpacks them:
+choice number i is bit (i mod 8) of byte (i / 8, rounded down). For example
+the byte 5 is 00000101 in binary, so the first three choices are 1, 0, 1.
+choicesToBytes() packs them back.
+
+6.7 Layer 4: the fields
+-----------------------
+Fully decoded, a fight looks like this:
+
+    _mini   web address of mini_perso.swf (client.swf loads it for the
+            small heads)
+    _seed   the fight's random seed
+    _p0     extras for team 0 (often nothing; can include a "support"
+            brute, _st)
+    _p1     extras for team 1
+    _glads  the list of brutes ("gladiators"), each with:
+              _n     name
+              _s     id (also the seed for its progression)
+              _t     team (0 or 1)
+              _lvl   number of level-ups taken
+              _gfx   appearance, 16 numbers separated by ";"
+              _bits  level-up choices (6.6)
+    _arena  which arena background to use
+    _end    a web address client.swf opens when the winner banner appears
+            (the old site used "javascript:showEnd()")
+
+6.8 The helper functions built on top
+-------------------------------------
+  parseInput(text)  Finds data=, k= and lang= in whatever was pasted: a full
+                    web page, a link, or just the FlashVars. It also undoes
+                    "&amp;", which is how "&" appears inside HTML source.
+
+  convert(text)     One-step fix for old fights:
+                      decode -> read the tree ->
+                      point _mini at the local mini_perso.swf (the old
+                      Muxxu address no longer exists) ->
+                      replace _end -> encode again.
+                    It returns new FlashVars that play in this project,
+                    plus a summary (seed, arena, brutes).
+
+  open(text)        An "editing session" for the Lab. It decodes the payload
+                    and returns an object you can change:
+                      glads         the brutes, in friendly form (choices
+                                    as a list of 0s and 1s)
+                      params()      writes your edits back into the tree and
+                                    encodes it with the same key
+                      fightInput()  the same fight in the format fight.js
+                                    wants, so the browser can calculate the
+                                    result itself and check it matches what
+                                    client.swf shows
+                      addGlad / removeGlad   add or remove brutes for team
+                                    fights (every fighter needs a unique id)
+                      setSeed, setArena, setSupport  change those values
+
+6.9 How the rest of the app uses it (payload.ts)
+------------------------------------------------
+  importPayload(text)
+      parseInput -> pdecode -> decode (checks ok) -> parseHx -> convert the
+      tree into plain values -> build a FightSpec. Names are converted from
+      bytes into proper text, so accented names display correctly.
+
+  buildParams(spec, { mini, end })
+      The reverse: build the tree from a FightSpec, with fields in the same
+      order real payloads use -> serHx -> encode with a fresh random
+      8-character key -> pencode -> "data=...&k=...&lang=...".
+
+Every fight you watch in this project goes through buildParams().
+
+
+===============================================================================
+PART 7 - THE SERVER: THE REFEREE AND THE RECORD KEEPER
+===============================================================================
+
+The server lives in apps/server/src. It's built with FASTIFY (a package for
+writing web servers in Node) and talks to Postgres through the "pg" package.
+
+7.1 Starting up (main.ts, config.ts, devdb.ts, migrate.ts)
+-----------------------------------------------------------
+When the server starts it:
+  1. reads its settings from ENVIRONMENT VARIABLES (settings given to a
+     program from outside, like DATABASE_URL = where the database is);
+  2. if no database was given and this isn't production, starts an
+     EMBEDDED Postgres (a private copy stored in apps/server/.pgdata), so
+     developers need no setup;
+  3. applies any migrations the database hasn't seen yet;
+  4. gives admin rights to any usernames listed in ADMIN_USERNAMES;
+  5. starts listening for requests (port 3001 by default). In production it
+     also serves the built web app, so one program serves everything.
+
+7.2 The database tables (migrations/001_init.sql, 002_admin.sql)
+-----------------------------------------------------------------
+  users            accounts: username, password hash, role, brute limit
+  sessions         who is signed in (see 7.3)
+  brutes           each Classic brute, stored in the engine's own form:
+                   seed_id, gfx, level_ups, bits (choices, as hex), plus
+                   Classic data: xp, pending_level_up, fights used today
+  level_ups        every level-up taken: which choice, the two options
+                   offered, XP spent
+  opponent_offers  the 8 opponents shown on each visit to the fight screen
+  fights           every fight: its full FightSpec (enough to replay it
+                   exactly), the result, XP given, and the stats from
+                   stats.ts
+  lab_payloads,    Lab saves for signed-in players
+  lab_brutes
+  settings         brutes per player (default 5), fights per day
+                   (default 10)
+  admin_log        every admin action: who, what, when
+
+The tables include CHECK rules, so the database itself refuses invalid data:
+an appearance must be 16 numbers, choice bits must be valid hex, a choice
+must be 0 or 1, and so on. That's a second line of defence behind the code.
+
+7.3 Accounts and security (auth.ts)
+-----------------------------------
+  * Passwords are never stored. The server stores a HASH: a scrambled
+    fingerprint made with "scrypt", a method designed to be slow for
+    attackers to reverse. At sign-in, the server hashes what you typed the
+    same way and compares the two hashes.
+  * Signing in creates a random SESSION TOKEN, stored in a COOKIE (a small
+    value the browser sends back automatically with each request). The
+    database stores only a hash of the token, so a stolen database copy
+    can't be used to sign in.
+  * After 10 failed sign-ins in 15 minutes for the same address and
+    username, sign-in is paused ("throttling"), to slow down password
+    guessing.
+  * Requests that change something must carry a special header
+    (X-MyBrute). Other websites can't add it, which blocks a trick called
+    CSRF, where another site makes your browser send requests to this one.
+
+7.4 The Classic rules (rules.ts, classic.ts)
+--------------------------------------------
+rules.ts holds the rules this project ADDS on top of the original game:
+  * XP needed to level up from displayed level L is 2 x L.
+  * A win gives 2 XP; a loss or a draw gives 1.
+  * Reaching the XP needed does NOT level up automatically: the brute is
+    marked "pending", and can't fight until the player picks a reward.
+  * Each brute has 10 fights per day, reset at midnight in Bordeaux, France
+    (where the original studio was), using the Europe/Paris time zone.
+  * Rules for names, usernames and passwords.
+
+classic.ts runs the actions. Every action happens inside a transaction that
+also LOCKS the brute's row. That means if two requests arrive at once for the
+same brute (say, a double-click), the second waits for the first to finish,
+so XP can never be given twice.
+
+  Create a brute
+      A new brute starts at level 1 with a chosen name and appearance. Its
+      id (its seed) and appearance can't be changed afterwards. Its stats
+      come from glad.js.
+
+  Find opponents
+      Throws away unused offers from last time and makes 8 new opponents at
+      the same level, each with a random id (also used as its name), random
+      choices and a random appearance. They're SAVED, so the player can only
+      fight an opponent that was actually offered (a cheater can't invent
+      a weak one).
+
+  Fight
+      The player sends only an offer number. The server then:
+        1. checks: the offer belongs to this brute and is unused; no level-up
+           is pending; the brute hasn't levelled since the offer; fights are
+           left today;
+        2. picks the fight seed NOW, at random. If the seed were known in
+           advance, a player could simulate every opponent and only fight
+           the ones they'd beat. Picking it at the last moment prevents
+           that ("scouting");
+        3. runs fight.js -> win, loss or draw;
+        4. calculates stats, XP, and whether a level-up is now pending;
+        5. saves the fight, updates the brute, marks the offer used.
+      If the same request arrives twice, the second simply returns the
+      fight already saved ("idempotent": doing it twice has the same effect
+      as doing it once). The result is saved BEFORE the player watches, so
+      closing the page mid-fight changes nothing.
+
+  Level up
+      The player picks 0 or 1. The server checks the options with glad.js,
+      records the choice, subtracts the XP (extra XP carries over), and
+      updates the bits.
+
+7.5 The Lab and admin (lab.ts, admin.ts, admin-cli.ts)
+-------------------------------------------------------
+  lab.ts       Save, list and delete Lab fights and brutes for signed-in
+               players, with a limit on how many.
+  admin.ts     The admin features: search players, suspend or delete them,
+               reset passwords, change brute limits; view, rename, move or
+               delete brutes; set XP, give back today's fights, undo the
+               last level-up; change settings; read the log. Every change is
+               written to admin_log in the same transaction as the change
+               itself. Admins can't change their own account, and can't
+               change stats or choices, because those always come from the
+               engine.
+               "Undo last level-up" is exact: thanks to determinism, the
+               same two options come back.
+  admin-cli.ts A command-line tool to make the very first admin:
+                 npm run admin -w @mybrute/server -- grant <username>
+
+7.6 Errors (errors.ts)
+----------------------
+Small helpers that turn problems into proper HTTP answers with friendly
+messages: 400 "bad request", 401 "not signed in", 403 "not allowed",
+404 "not found", 409 "conflict", 429 "too many attempts".
+
+
+===============================================================================
+PART 8 - THE WEB APP: WHAT THE PLAYER SEES
+===============================================================================
+
+The web app lives in apps/web. VITE is the tool that runs it during
+development and bundles it into a few optimised files for production.
+
+8.1 Starting point and pages (main.tsx, App.tsx)
+-------------------------------------------------
+main.tsx starts React. App.tsx draws the header and decides which page to
+show for each web address ("ROUTING", using React Router):
+
+    /                         home page
+    /login, /register         sign in, create an account
+    /brutes                   my brutes
+    /brutes/new               create a brute
+    /brutes/:id               the brute's "cell" (its page)
+    /brutes/:id/fight         pick an opponent
+    /brutes/:id/level-up      choose a reward
+    /brutes/:id/history       past fights
+    /fights/:fightId          watch a fight
+    /lab                      the Laboratory
+    /admin/...                admin pages (admins only)
+
+(":id" means "any brute number goes here".)
+
+8.2 Talking to the server (api.ts, useApi.ts, auth.tsx)
+--------------------------------------------------------
+  api.ts      One function per server request, so the rest of the app never
+              builds requests by hand.
+  useApi.ts   A helper that loads data for a page and tracks "loading",
+              "done" and "error".
+  auth.tsx    Remembers who is signed in, and blocks pages that need an
+              account (RequireAuth) or admin rights (RequireAdmin).
+
+8.3 Classic screens (src/classic/)
+----------------------------------
+  MyBrutes, CreateBrute, Cell (attributes, level-ups, inventory), Opponents,
+  LevelUp, History, FightRow, FightView, AuthPages.
+
+8.4 The Laboratory (src/lab/)
+-----------------------------
+  LabPage        the Lab's main screen
+  VersusBoard    the two teams facing each other
+  BruteEditor    edit a brute: id, level, choices, appearance, avoid list
+  Bench          saved brutes waiting to be used
+  ArenaPanel     plays the fight in client.swf
+  PayloadDialog  paste or copy FlashVars (uses importPayload/buildParams)
+  storage.ts     where saves go: on the server if you're signed in,
+                 otherwise in your browser's own storage ("localStorage")
+
+8.5 Playing Flash (src/swf/)
+----------------------------
+  ruffle.ts      waits for Ruffle to load, and lets client.swf "call back"
+                 into the page when a fight ends (see below)
+  SwfPlayer.tsx  a component that creates one Ruffle player, loads a SWF
+                 with its FlashVars, and removes it when the component goes
+                 away. It can wait until it's visible on screen before
+                 loading (useful for long lists of portraits), and can draw
+                 with a transparent background.
+  Portrait.tsx   a brute portrait using perso.swf
+  useSwfEnd.ts   the trick for revealing results:
+                   1. the page registers a callback and gets a special
+                      "javascript:" address;
+                   2. that address is put in the payload's _end field;
+                   3. when client.swf shows the winner banner, it opens _end,
+                      which runs the callback;
+                   4. the page then reveals the result the server already
+                      saved.
+
+8.6 Shared UI (src/ui/)
+-----------------------
+  BruteKit (XP bar, fight dots), GfxEditor (appearance editor),
+  InventoryPanel (inventory.swf), CommitInput (an input that only saves when
+  you finish typing).
+
+
+===============================================================================
+PART 9 - THE LIFE OF ONE FIGHT, FROM CLICK TO REPLAY
+===============================================================================
+
+This ties everything together. Say your brute "Rocky" (id 18327968, level 5)
+wants a training fight.
+
+ 1. You open /brutes/12/fight. The browser asks the server for opponents.
+
+ 2. The server (classic.ts, newOpponents) invents 8 level-5 opponents with
+    random ids, choices and looks, saves them as offers, asks glad.js for
+    each one's stats, and sends the list back. The page shows them with
+    portraits drawn by perso.swf.
+
+ 3. You click an opponent. The browser sends ONLY the offer number.
+
+ 4. The server (startFight) locks Rocky, checks everything, picks a random
+    fight seed, builds a FightSpec, runs fight.js, and gets "win". It
+    calculates stats, gives 2 XP, saves the fight, marks the offer used,
+    and replies with the fight number. The result is now final.
+
+ 5. The browser opens /fights/<number>. It downloads the saved FightSpec.
+
+ 6. FightView calls buildParams() (Part 6.9):
+      FightSpec -> Haxe tree -> text -> scrambled with a random key
+      -> percent-encoded -> "data=...&k=...&lang=en"
+    with _end set to the page's callback address (Part 8.5).
+
+ 7. SwfPlayer loads client.swf in Ruffle with those FlashVars. client.swf
+    unscrambles them with the key, reads the brutes and seed, and runs its
+    own copy of the original engine. Because it's the same engine with the
+    same inputs, it produces the same fight the server already calculated,
+    and animates it.
+
+ 8. The winner banner appears; client.swf opens _end; the page reveals
+    "Victory! +2 XP" with the statistics. (Or you press "Skip to the
+    result".)
+
+ 9. If Rocky now has enough XP, he's marked pending. The next visit leads to
+    the level-up page, which shows the two real options from glad.js.
+
+At no point did the browser decide anything. It only displayed the decision.
+
+
+===============================================================================
+PART 10 - TESTS: HOW THE PROJECT PROVES IT IS RIGHT
+===============================================================================
+
+Run all tests with:  npm test
+
+Engine tests (packages/engine/test/):
+  golden.test.ts       The most important. "Golden" data was recorded by
+                       running the ORIGINAL, unmodified files from legacy/
+                       (scripts/make-golden.cjs). The test runs today's
+                       wrapped and patched engine and requires identical
+                       results for:
+                         * real historical fights (same winner, same number
+                           of events, same fingerprint of the full history);
+                         * 60 random fights and 40 random progressions;
+                       and checks that running twice gives the same answer.
+  vendor.test.ts       The original files still match their recorded
+                       fingerprints, the generated wrappers contain them
+                       unchanged, and fight.js differs from the original
+                       only by its one documented line.
+  payload.test.ts      Rebuilding a real payload gives back the original
+                       text byte for byte; a wrong key is refused; invalid
+                       fights (duplicate ids, empty teams) are rejected.
+  progression.test.ts, stats.test.ts, avoid.test.ts
+                       The adapters behave as documented.
+
+Server tests (apps/server/test/), run against a real embedded database:
+  accounts, Classic rules, admin tools, and the rules.ts calculations.
+
+A FINGERPRINT here means a SHA-256 hash: a short code computed from data.
+Any change to the data, however small, gives a completely different code. So
+comparing fingerprints is a quick way to prove two long things are identical.
+
+"npm run typecheck" runs the TypeScript checker over everything.
+
+
+===============================================================================
+PART 11 - HOW THE PROJECT WAS BUILT (THE PROCESS)
+===============================================================================
+
+The git history (oldest first) tells the story:
+
+  1. "Engine package: vendored original La Brute engine, adapters and
+     golden tests"
+       The foundation first: get the original engine into a clean package,
+       and prove with tests that it behaves exactly like the original.
+       Everything else depends on this being right, so it came first.
+
+  2. "Pin LF line endings so vendored engine checksums survive checkout"
+       Windows and Linux end lines of text differently. Git can convert
+       them automatically, which would change the original files' bytes and
+       break their fingerprints. The .gitattributes file stops that. A good
+       example of protecting the "never modify the original" rule.
+
+  3. "React Laboratory: versus board, brute editor, original SWF playback"
+       Then a first useful app: the Lab, which only needs the engine and
+       the browser, no server.
+
+  4. Several commits polishing the Lab: layout, transparent portraits,
+     colours, the avoid list, the editor's arrangement.
+
+  5. "Upgrade dependencies to patched releases; add server workspace"
+     "Classic backend: accounts, brutes, opponents, authoritative fights,
+     level-ups"
+       Then the server and database, with Classic mode's rules.
+
+  6. "Classic mode in the web app; dev runner; Lab saves per account"
+     "Cell: merge attributes and level-ups on the left, inventory fills the
+     right"
+       The Classic screens on top of the server.
+
+  7. "Admin tools for Classic mode"
+       Finally, tools to run the site.
+
+Patterns in how it was built, worth copying:
+  * Build the trusted foundation first and test it hard before building on
+    top.
+  * Keep the original code untouched and verifiable; put all new behaviour
+    in small, separate adapters.
+  * Store inputs, not results, when you have a deterministic engine.
+  * Never trust the client for anything that matters.
+  * Write down the "why" in comments next to the code (most files start
+    with a few lines explaining their purpose and decisions).
+  * Let the database enforce rules too, not just the code.
+
+
+===============================================================================
+PART 12 - RUNNING IT YOURSELF
+===============================================================================
+
+You need Node.js version 20 or newer (download from nodejs.org). Then, in a
+terminal (a text window for typing commands), inside the project folder:
+
+    npm install        downloads all the packages the project needs
+    npm run dev        starts the server (with its own database) and the web
+                       app; then open http://localhost:5173 in your browser
+                       ("localhost" means "this computer"; 5173 is the
+                       "port", like a door number)
+    npm test           runs every test
+    npm run typecheck  checks all the TypeScript
+
+Press Ctrl+C in the terminal to stop "npm run dev".
+
+To make yourself an admin: register in the app, then run
+    npm run admin -w @mybrute/server -- grant <your username>
+
+For putting it on a real server, see the "Deployment" section of README.md.
+
+Suggested reading order for the code itself:
+  1. README.md
+  2. packages/engine/vendor/VENDOR.md
+  3. packages/engine/src/progression.ts and gfx.ts (short and well
+     commented)
+  4. packages/engine/vendor/labrute.js with Part 6 of this guide open
+  5. packages/engine/src/payload.ts
+  6. apps/server/src/rules.ts, then classic.ts
+  7. apps/server/migrations/001_init.sql
+  8. apps/web/src/App.tsx, then classic/FightView.tsx and swf/SwfPlayer.tsx
+
+
+===============================================================================
+PART 13 - GLOSSARY
+===============================================================================
+
+Adapter        Code that translates between two systems without adding
+               rules of its own.
+API            The set of requests a server understands.
+Array          An ordered list of values.
+Base64         A way to write bytes with 64 safe characters.
+Bit            A single 0 or 1. Eight bits make a byte.
+Branch         A separate line of history in git.
+Byte           A number from 0 to 255; one character in latin1 text.
+Checksum       A short number computed from data to detect damage.
+Client         The part of a website running in your browser.
+Commit         One saved change in git's history.
+Compile        Translate code from one language into another (e.g. Haxe to
+               JavaScript, TypeScript to JavaScript).
+Component      A reusable piece of screen in React.
+Cookie         A small value the browser stores and sends back to a site.
+CSRF           An attack where another site makes your browser send
+               requests; blocked here by a required header.
+Database       Permanent, organised storage (here: PostgreSQL).
+Deterministic  Same inputs always give the same outputs.
+Environment    A setting given to a program from outside when it starts.
+  variable
+FightSpec      This project's description of a fight's inputs.
+FlashVars      The settings string given to a Flash file when it loads.
+Function       A named, reusable piece of code with inputs and an output.
+gfx            A brute's appearance: 16 numbers separated by ";".
+Golden test    A test comparing results against outputs recorded from a
+               trusted original.
+Hash           A fingerprint of data; can't feasibly be turned back into
+               the data. Used for passwords, tokens and file checks.
+Haxe           The language the original game logic was written in.
+Hexadecimal    Counting in base 16 (0-9, A-F). "ff" = 255.
+HTTP           The system browsers and servers use to exchange messages.
+Idempotent     Doing it twice has the same effect as doing it once.
+JSON           A text format for objects and lists.
+Key            The secret used to scramble and unscramble data.
+Keystream      The sequence of numbers XORed with data to scramble it.
+latin1         Text where every character is exactly one byte.
+Level-ups      How many times a brute has levelled; shown level = this + 1.
+Migration      A numbered file that creates or changes database tables.
+Module         A code file that exports things other files can import.
+Monorepo       One repository holding several related packages.
+Node.js        A program that runs JavaScript outside a browser.
+npm            The package manager and command runner for Node.
+Object         A bundle of named values.
+Patch          A small, deliberate change to existing code.
+Payload        The encoded fight data given to client.swf (data=&k=&lang=).
+Percent-       Writing a byte as % plus two hex digits.
+  encoding
+Port           A numbered "door" a server listens on (e.g. 3001).
+Postgres       PostgreSQL, the database used here.
+React          A library for building web pages from components.
+RNG            Random number generator; repeatable when given a seed.
+Route          The rule linking a web address to a page or an API action.
+Ruffle         A modern program that plays old Flash (.swf) files.
+Seed           The starting number for a random number generator.
+Serialization  Turning objects into text (and back: deserialization).
+Server         The always-on program that keeps records and makes trusted
+               decisions.
+Session        Being signed in; tracked with a token in a cookie.
+SHA-256        A common hashing method producing 64 hex characters.
+SQL            The language used to talk to databases.
+SWF            A Flash file.
+Table          A database's spreadsheet-like collection of rows.
+Test           Code that checks other code gives expected results.
+Transaction    A group of database changes that all happen or none do.
+Type           A promise about what kind of value something is.
+TypeScript     JavaScript with types, checked before running.
+Vendored       Third-party code copied into a project and kept unchanged.
+Vite           The tool that runs and bundles the web app.
+XOR            Bit operation: 1 where bits differ, 0 where they match.
+               Doing it twice with the same number undoes it.
+XP             Experience points; enough of them lets a brute level up.
+
+===============================================================================
+                                   END
+===============================================================================
