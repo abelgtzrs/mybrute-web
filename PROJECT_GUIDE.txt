@@ -1,14 +1,13 @@
 ===============================================================================
-                    MYBRUTE++  -  A BEGINNER'S GUIDE TO THE WHOLE PROJECT
+                    MYBRUTE++  -  A PLAIN-LANGUAGE GUIDE TO THE WHOLE PROJECT
 ===============================================================================
 
 Who this is for
 ---------------
-You have never programmed before, and you want to understand what this project
-is, why it was built the way it was, and how every part of it fits together.
-Nothing here assumes prior knowledge. Every technical word is explained the
-first time it appears, and there is a glossary at the end (Part 13) you can
-jump to at any time.
+This guide explains what this project is, why it was built the way it was, and
+how its parts fit together. It uses plain words and needs no programming
+background. Each technical term is explained where it first appears, and
+Part 13 is a glossary you can check at any time.
 
 Read it in order the first time. Later you can use the table of contents to
 go straight to a part.
@@ -16,7 +15,7 @@ go straight to a part.
 Table of contents
 -----------------
   Part 1   The game, and what this project is trying to do
-  Part 2   A crash course in the ideas you need
+  Part 2   The ideas behind the project
   Part 3   The one big idea behind the design
   Part 4   A tour of the folders
   Part 5   The engine package: the heart of the project
@@ -85,18 +84,18 @@ brutes, fights and settings.
 
 
 ===============================================================================
-PART 2 - A CRASH COURSE IN THE IDEAS YOU NEED
+PART 2 - THE IDEAS BEHIND THE PROJECT
 ===============================================================================
 
-This part explains the general ideas behind any website like this one. Skip
-anything you already know.
+This part explains the general ideas behind a website like this one. If a
+topic is already familiar, move on to the next.
 
 2.1 Programs and code
 ---------------------
 A PROGRAM is a list of instructions for a computer. CODE is those instructions
 written as text in a PROGRAMMING LANGUAGE, a strict, precise language the
-computer can follow. A FILE of code is just a text file; you could open any of
-the files in this project in Notepad.
+computer can follow. A FILE of code is just a text file; any file in this
+project can be opened in a plain text editor such as Notepad.
 
 A FUNCTION is a named, reusable piece of code that takes some inputs and
 produces an output. Example in plain words:
@@ -523,7 +522,7 @@ position the result is 1 if the two bits differ and 0 if they're the same.
     -----------  XOR
     66 = 1000010        so  65 XOR 3 = 66   ("A" becomes "B")
 
-The magic property: doing XOR with the same number TWICE gives back the
+The useful property: doing XOR with the same number TWICE gives back the
 original: 66 XOR 3 = 65. So XOR with a secret number scrambles, and XOR with
 the same secret number unscrambles. The secret numbers are called the
 KEYSTREAM.
@@ -587,7 +586,7 @@ first recorded fight in legacy/fights.json):
     oy5:_miniy14:mini_perso.swfy5:_seedi90972473y3:_p0ny3:_p1n
     y6:_gladsaoy5:_bitss12:qqzY%mzGu3cAy2:_ny9:Warcott77...
 
-It looks like nonsense, but it's a format for writing objects and lists as
+It looks unreadable at first, but it's a format for writing objects and lists as
 one line of text, made by the Haxe language. Each piece starts with a
 one-letter TAG saying what comes next:
 
@@ -1024,7 +1023,7 @@ The git history (oldest first) tells the story:
   7. "Admin tools for Classic mode"
        Finally, tools to run the site.
 
-Patterns in how it was built, worth copying:
+Patterns in how it was built:
   * Build the trusted foundation first and test it hard before building on
     top.
   * Keep the original code untouched and verifiable; put all new behaviour
