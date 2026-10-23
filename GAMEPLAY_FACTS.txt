@@ -667,15 +667,16 @@ who knows the original game. I matched each one to the engine's code.
   Chef                In the fight       Poisons the opponent: it loses 2% of
                                          its health per attack until its
                                          player drinks the tragic potion
-                                         (Medecine). This matches the poison
+                                         (I take this to be the Medecine
+                                         super). This matches the poison
                                          setting above.
   Saboteur            In the fight       Sabotages a weapon when the opponent
                                          takes it out. This matches the
                                          sabotage setting above.
 
   * The last three (Backup, Chef, Saboteur) each cost 1 death per day to
-    activate. That ties them to the same death count Hyperactive extends,
-    which is why Hyperactive is valuable to a brute that uses them.
+    activate. The owner's description doesn't say more, so I won't guess
+    how this interacts with Hyperactive's fourth death.
 
 What I checked in the code:
   * The 2% figure for Chef is exact: the poison damage is
