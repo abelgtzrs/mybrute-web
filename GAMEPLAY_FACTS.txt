@@ -50,8 +50,9 @@ Contents
   That makes 10 stat points in total, always.
 
 * So the game has only 10 possible starting stat combinations. MEASURED over
-  20,000 ids, they all appear and each is about equally common, for example
-  3/2/3/2 or 2/2/3/3 (strength/agility/speed/life).
+  20,000 ids, exactly 10 appear. The five most common each cover
+  about 12% of brutes, for example 3/2/3/2 or 2/2/3/3
+  (strength/agility/speed/life).
 
 * Starting health follows this formula (from the code):
 
@@ -88,8 +89,8 @@ Contents
   the same seed and the same brutes, every hit lands (or misses) exactly the
   same way, every time.
 
-* Choosing option 1 at a level-up does more than pick a reward. The code adds
-  a number between 131 and 10,137 to the brute's generator seed. This changes
+* Choosing option 1 at a level-up does more than pick a reward. The code
+  shifts the brute's generator seed by a number between 131 and 10,137. This changes
   every later offer. A brute's future is therefore a branching tree, not a
   line. Option 0 leaves the generator alone.
 
@@ -148,7 +149,7 @@ ever be offered.
   0 or 1). Presumably this changes how the brute stands in the animation;
   the engine only stores the number, so I can't say what it looks like.
 
-* Five of the roll groups remove things from this brute's pool for good:
+* Four groups of rolls remove things from this brute's pool for good:
 
     Thief, Downpour, Hypno  Each is removed for 2 out of 3 brutes.
                             Only about 1 in 3 brutes can ever get each one.
@@ -269,16 +270,13 @@ tempo (lower is faster), and the rest are percentage adjustments.
 The damage-per-hit column below uses the strength formula from section 6 with
 the random factor at its average (1.0), at strength 10 and at strength 50.
 
-  Weapon        Damage  Speed(tempo)  Hit @10 str  Hit @50 str
-  Hammer          55       230           84.5        202.5
-  Flail           36       220           56.0        136.0
-  Big sword       28       140... see note
-  Axe             17       150           27.5         69.5
-  Sword           10       120           17.0         45.0
-  Knife            7        60           12.5         34.5
-
-(Note: the big sword's tempo in the code is 180, not 140. The other five
-rows above are exact.)
+  Weapon        Damage  Tempo   Hit @10 str  Hit @50 str
+  Hammer          55     230        84.5        202.5
+  Flail           36     220        56.0        136.0
+  Big sword       28     180        42.0        110.0
+  Axe             17     150        27.5         69.5
+  Sword           10     120        17.0         45.0
+  Knife            7      60        12.5         34.5
 
 Things this table shows:
 
@@ -344,8 +342,7 @@ out of four brutes (section 4). They are also the odd ones out in the table:
   TROMBONNE         Damage 20, tempo 250 (the slowest weapon), disarm +50,
   (trombone)        parry +20, reach 2.
 
-  KEYBOARD          Damage 7, combo +50 (the best combo among ordinary
-                    melee weapons).
+  KEYBOARD          Damage 7, combo +50 (second only to the leek).
 
   POUSSIN (chick)   A thrown weapon: damage 5, tempo 32.
   NOODLES           A thrown weapon: damage 10, tempo 45.
@@ -356,12 +353,15 @@ tempo in the game).
 How throwing works:
 * A "throw" weapon is thrown on every use. Its damage is
       (weapon damage + strength x 0.1 + agility x 0.15) x random 1.0 to 1.5
-  minus armor. Thrown weapons are not lost after throwing.
+  with a minimum of 1. Thrown weapons are not lost after throwing.
+* In this code a thrown weapon's damage is not reduced by the target's
+  armor: the function that rolls it is called without the target. (Brawl
+  hits, Downpour and grabs do subtract armor.)
 * Any other weapon can also be thrown by accident. When a brute holds a
   melee weapon, there is a 1 in "damage" chance (for example 1 in 7 for a
   knife, 1 in 55 for a hammer) that it throws it instead. The weapon is then
   gone for the rest of the fight, and the brute is left with bare hands.
-  Damage of a thrown melee weapon uses the thrown formula above.
+  Its damage uses the thrown formula above.
 
 
 ===============================================================================
@@ -369,9 +369,10 @@ How throwing works:
 ===============================================================================
 
 How supers work:
-* At the start of each of a brute's turns, the game draws one of its supers
-  with a chance of  (sum of the supers' "toss" values) / (that sum + 10).
-  More supers means more chances to use one.
+* At the start of each of a brute's turns, the game draws one of its supers.
+  The chance that one fires is roughly  (sum of the supers' "toss" values)
+  / (that sum + 10), so the more supers a brute has, the more often it uses
+  one.
 * Each super has a limited number of uses ("uses" below). When the uses run
   out, the super is gone.
 * Some supers refuse to fire when they would be useless, and then the brute
@@ -414,8 +415,8 @@ How supers work:
     Every enemy pet changes sides and fights for the hypnotist.
 
   DOWNPOUR (1 use, toss 2)
-    Needs more than 2 weapons. The brute throws away half of its spare
-    weapons at the opponent in one go. Each weapon's damage is
+    Needs more than 2 weapons. The brute throws about half of its weapons
+    (never the one in its hand) at the opponent in one go. Each weapon's damage is
     (weapon damage + strength x 0.1 + agility x 0.15) x random 1.0 to 1.5
     minus armor. It takes a long time (200 x speed factor).
 
@@ -458,8 +459,8 @@ Things to notice:
 * The panther is the fast one: speed 24, combo +60, dodge +20.
 * A bear costs its owner 8 life stat points, which is a lot of health. A
   panther costs 6, a dog 2.
-* In the stat code, the life numbers above are modifiers; a pet's real
-  health is calculated with the same formula as a brute.
+* The "Life" column is the pet's life stat. Its real health comes from the
+  same formula as a brute's.
 * Pets never get big stat bonuses; they don't level.
 * A pet that dies leaves a body. A brute with Trapper can eat it
   (section 9), and the brute's team gets a "pet frag" counted in its stats.
@@ -561,7 +562,8 @@ Combinations that stand out:
   The project's fight player has a patched check for this so that 2v2 and
   larger teams work.
 
-* MEASURED: 300 simulated fights between level-11 brutes, with random ids.
+* MEASURED: 300 simulated fights between level-11 brutes, with ids drawn
+  from two ranges and random level-up choices.
   The results were 165 wins for team 0 and 135 for team 1, with no draws.
   The shortest fight had 10 recorded events and the longest 141. The
   average was about 56. (This only tells you what a random pair of
@@ -606,9 +608,7 @@ For every attack, the engine does these checks in this order:
          defender riposte + weapon riposte  (percent).
 
 Other facts:
-* A netted or trapped fighter can't parry or dodge.
-* Thrown weapons are harder to block (the parry roll is made 10 times as
-  hard), and easier to dodge (a dodge roll counts double).
+* A netted fighter can't parry or dodge.
 * The history records every attack with its damage, and whether it was a
   disarm, a destroyed weapon or a broken shield. The project turns that log
   into per-brute statistics.
@@ -660,8 +660,8 @@ suggest links to the talents (see section 17).
     16 weapons
      6 supers
      3 pets (two dogs and a panther)
-    22 permanent bonuses (including Immortality's rival Untouchable,
-        Merciless, Armor and Ballerina)
+    22 permanent bonuses (including Untouchable, Merciless, Armor and
+        Ballerina)
      1 talent (Hyperactive)
   In other words, after level 80 or so, a brute has collected nearly every
   reward its destiny allows, and level-ups become almost entirely stat gain.
@@ -690,10 +690,8 @@ suggest links to the talents (see section 17).
 * Dying to poison is possible: poison damage is applied by the same hit
   function as every other attack.
 
-* A brute holding a weapon it didn't plan to use may "trash" it. When an
-  attack disarms someone, the weapon is removed from their collection, not
-  just dropped. So disarming permanently strips a weapon for the rest of the
-  fight.
+* A disarm removes the weapon from the victim's collection, not just from
+  their hand. It is gone for the rest of the fight.
 
 * A thief steals and then keeps the weapon for the rest of the fight.
 
