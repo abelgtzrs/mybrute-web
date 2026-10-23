@@ -35,7 +35,7 @@ Contents
   11. The 27 permanent bonuses
   12. How a fight is played, turn by turn
   13. Hits, dodges, blocks, combos and counters
-  14. The "support brute" and other team tricks
+  14. Talents, the support brute and other team tricks
   15. Level limits and what a level 500 brute looks like
   16. Small details worth knowing
   17. Things the code does not show
@@ -615,13 +615,14 @@ Other facts:
 
 
 ===============================================================================
-14. THE "SUPPORT BRUTE" AND OTHER TEAM TRICKS
+14. TALENTS, THE SUPPORT BRUTE AND OTHER TEAM TRICKS
 ===============================================================================
 
-The fight engine reads two extra settings per team ("team properties"), and
-one of them is a whole extra fighter.
+The fight engine reads three extra settings per team ("team properties").
+One of them is a whole extra fighter. As the next part explains, each of the
+three is the in-fight half of a talent.
 
-SUPPORT BRUTE (property name _st)
+SUPPORT BRUTE (property name _st)   <- the Backup talent
   A team can hold a reserve brute that is not on the field at the start.
   Each time a fighter on that team acts, there is a chance equal to the
   fraction of health that fighter has lost that the reserve arrives.
@@ -633,19 +634,66 @@ SUPPORT BRUTE (property name _st)
       as a team member dying for the "who is alive" check.
   The project's Lab has fields to edit this brute.
 
-POISON (property name _poi)
+POISON (property name _poi)   <- the Chef talent
   If a team is poisoned, each action of a fighter on that team costs it
   ceil(maximum health / 50) health, while the enemy is still alive.
-  Medicine on that team cures it.
+  That is 2% of maximum health per action. Medicine on that team cures it.
 
-SABOTAGE (property name _sab)
+SABOTAGE (property name _sab)   <- the Saboteur talent
   If set, one random weapon of every brute on the team is rigged. When the
   brute draws it, the weapon breaks on the spot: it is removed, the brute
   falls back to bare hands, and the turn is wasted (100 time units).
 
-I can read what these three settings do in the code. I can't tell from the
-code alone how the original website decided to turn them on. Their names
-suggest links to the talents (see section 17).
+HOW THE TALENTS FIT TOGETHER
+The talents work "out of combat": the website decides, before the fight
+starts, whether a team gets one of the settings above. The fight engine only
+carries out the result. The descriptions below come from the project owner,
+who knows the original game. I matched each one to the engine's code.
+
+  Talent (name in     Where it acts      What it does
+  the game)
+  Hyperactive         Outside fights     Raises the number of deaths a brute
+                                         can suffer in a day before it can
+                                         no longer train, from 3 to 4. Before
+                                         the talent, a brute that died 3
+                                         times had its training for the day
+                                         over.
+  Spy                 Outside fights     Lets you look into opponents' cells
+                                         (their brute pages).
+  Backup              In the fight       Lets the brute act as support for
+                                         your other brutes that are higher
+                                         level. This matches the support
+                                         brute above.
+  Chef                In the fight       Poisons the opponent: it loses 2% of
+                                         its health per attack until its
+                                         player drinks the tragic potion
+                                         (Medecine). This matches the poison
+                                         setting above.
+  Saboteur            In the fight       Sabotages a weapon when the opponent
+                                         takes it out. This matches the
+                                         sabotage setting above.
+
+  * The last three (Backup, Chef, Saboteur) each cost 1 death per day to
+    activate. That ties them to the same death count Hyperactive extends,
+    which is why Hyperactive is valuable to a brute that uses them.
+
+What I checked in the code:
+  * The 2% figure for Chef is exact: the poison damage is
+    ceil(maximum health / 50), and 1/50 is 2%.
+  * The engine has five talents: HYPERACTIVE, COOK, SPY, SABOTEUR and
+    STRIKER. The owner's list has five too, with "Chef" for COOK and
+    "Backup" in place of STRIKER. By elimination, I believe STRIKER is the
+    engine's name for Backup, since support is the one fight setting left
+    over. That is my inference; the code itself never links the two.
+  * Hyperactive and Spy have no trace in the fight engine, which fits them
+    working outside combat.
+  * Talent weights in the reward table are 3 each (Hyperactive, Cook, Spy,
+    Saboteur) and 5 for Striker.
+  * Death counts and daily training limits are not part of this project's
+    Classic mode. Classic uses 10 training fights per day and no death
+    limit (README.md), so the talents' out-of-combat effects do not exist
+    here. Only the fight half is supported, through the Lab's team
+    settings.
 
 
 ===============================================================================
@@ -709,12 +757,10 @@ suggest links to the talents (see section 17).
 
 To keep this honest, here are things I looked for and could not find:
 
-* TALENTS. There are five (Hyperactive, Cook, Spy, Saboteur, Striker) and
-  they can be won as rewards. But I found no code in the fight engine that
-  uses them. The fight only reads the team settings of section 14. The
-  talents probably had their effects elsewhere in the original website
-  (outside the files this project has), or were never fully used in the
-  fight engine. Taking a talent still counts as a reward in the progression.
+* TALENTS (out of combat). Hyperactive's extra death and Spy's cell
+  viewing, and the rule that Backup, Chef and Saboteur cost a death per day,
+  happened on the original website. None of that is in the files this
+  project has. Section 14 gives the details the owner supplied.
 
 * The meaning of the "stance" id. The engine stores it, but I can't see
   what it changes.
