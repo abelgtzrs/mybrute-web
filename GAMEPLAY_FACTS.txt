@@ -202,6 +202,12 @@ enormous number of different careers.
     directly, 6 of the 9,044 brutes that took a bear or panther in 60,000
     ids (60 option-0 level-ups) still had the other one available. That is
     about 0.07%, in line with 1 in 1000 for a sample this small.
+  - A real example, found by the project owner: brute id 20208 at level 72,
+    with the level-up bits 50c59eb252a68b6c2f (35 second options picked).
+    Replaying it in the engine gives the bear at level 4, a dog at level 26
+    and the panther at level 72, so it holds both. The bear was taken 68
+    level-ups before the panther was offered, which is why the 1 in 1000
+    exception is so hard to see.
 
 * Taking any talent removes all the other talents from the pool. A brute can
   only ever hold one.
