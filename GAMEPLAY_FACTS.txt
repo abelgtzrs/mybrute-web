@@ -81,9 +81,11 @@ Contents
   "minimal standard" generator). 16807 is 7 to the 5th power, and 2147483647
   is 2 to the 31st power minus 1.
 
-* Each brute has its own generator, started from the brute's id. That is why
-  a brute's id fixes its whole career: its first level-up options, its
-  hidden destiny (section 4), everything.
+* Each brute has its own generator, started from the brute's id. The id
+  therefore fixes two things: the brute's hidden destiny (section 4) and its
+  first level-up offer. It does NOT fix the rest of the career. Every later
+  offer also depends on the choices made before it, as the next points
+  explain.
 
 * Every fight has its own generator too, started from the fight seed. With
   the same seed and the same brutes, every hit lands (or misses) exactly the
@@ -97,6 +99,19 @@ Contents
 * Because of this, there are far more possible careers than there are brutes.
   A brute with 65 level-ups has 2 to the 65th power possible choice
   sequences, each leading to different offers after the first option 1.
+
+* MEASURED: take brute id 18327968 (a brute from the recorded fights) and try
+  all 4,096 ways to make its first 12 choices. They end in 4,072 different
+  builds (stats plus weapons, supers, pets and bonuses). Only 24 builds are
+  repeats. Both paths see the same first offer, and then they drift apart:
+  after one different choice, the second and third offers changed from
+  "Wood Club / Axe" to "Knife / Lance".
+
+* The summary: a brute's destiny is fixed, but a player never sees it in the
+  game, and the destiny only sets limits. Which of the allowed rewards the
+  brute meets, and in what order, depends on the path. There are an
+  exponential number of paths, so two brutes with the same id can end up
+  very different.
 
 
 ===============================================================================
@@ -142,8 +157,11 @@ Contents
 ===============================================================================
 
 When a brute is created, the code uses its id to roll a private set of
-restrictions. Nobody sees these directly, but they shape what the brute can
-ever be offered.
+restrictions. This destiny is fixed for the id and never changes. Players
+can't see it in the game. It only sets limits: it says what can NEVER be
+offered, not what will be. Inside those limits, the offers depend on the
+choices made along the way (section 2), so the same destiny allows an
+enormous number of different careers.
 
 * A 1 in 1000 chance of a special "stance" (the code stores a stance id of
   0 or 1). Presumably this changes how the brute stands in the animation;

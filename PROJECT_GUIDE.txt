@@ -219,8 +219,11 @@ from the same starting number, called the SEED, and you get EXACTLY the same
 sequence of "random" numbers every time.
 
 This is the single most important idea in the whole project. In La Brute:
-  * a brute's identity number (its "id") is the seed for its levelling, so a
-    given id always offers the same rewards, given the same earlier choices;
+  * a brute's identity number (its "id") is the seed for its levelling. The
+    id fixes the brute's first offer and a hidden "destiny" (limits on what
+    it can ever be offered). Players never see this destiny. The later
+    offers also depend on the choices made so far, so the same id can lead
+    to a huge number of different careers;
   * a fight has its own seed, so the same two brutes with the same fight seed
     always produce exactly the same fight, blow by blow.
 
