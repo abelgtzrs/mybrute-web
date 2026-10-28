@@ -188,9 +188,20 @@ enormous number of different careers.
   brute's two starting bonus points are drawn from this list. Stat numbers:
   0 strength, 1 agility, 2 speed, 3 life.
 
-* Bear and panther are rivals. When a brute takes one of them, the other one
-  is removed from its pool, except for a 1 in 1000 chance. MEASURED: out of
-  5,000 ids taken to level 201 by always choosing option 0, none had both.
+* Bear and panther are rivals. The moment a brute takes ANY pet (a dog, the
+  panther or the bear), the game rolls one more random number. In 999 cases
+  out of 1000, taking the panther removes the bear from the pool, and taking
+  the bear removes the panther. In the remaining 1 case in 1000 the other
+  one stays available.
+  - This is not part of the id's destiny. It is decided at the moment the
+    pet is taken, by the next number in the brute's random sequence. So it
+    depends on the whole path before that point, and you can't read it from
+    the id alone.
+  - MEASURED: out of 5,000 ids taken to level 201 by always choosing option
+    0, none ended up with both. Looking at the engine's weight table
+    directly, 6 of the 9,044 brutes that took a bear or panther in 60,000
+    ids (60 option-0 level-ups) still had the other one available. That is
+    about 0.07%, in line with 1 in 1000 for a sample this small.
 
 * Taking any talent removes all the other talents from the pool. A brute can
   only ever hold one.
