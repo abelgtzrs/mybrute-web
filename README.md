@@ -7,15 +7,22 @@ the Haxe-compiled `Gladiator` and `Arena` (progression and combat) and the origi
   The server decides every fight with the original engine; `client.swf` plays it back.
 - **Laboratory:** unrestricted experiments: any brute, level, choices or appearance, team fights, historical payloads.
   Lab copies never change Classic brutes.
+- **Tournaments:** separate competition page with single/double elimination, round robin, MLB-style divisions and playoffs,
+  and the current 36-entrant UEFA Champions League-style league phase. Enter saved Lab brutes, generated brutes, or rosters; simulate rounds or watch fights in a side panel (with a viewer mode).
+  Elimination brackets show brute headshots; a watched fight's result, bracket and standings update only once it ends.
 
 ## Layout
 
 | Path | What it is |
 |---|---|
 | `packages/engine` | The original engine files, vendored unchanged (see `vendor/VENDOR.md`), plus typed adapters: payload build/import, progression, appearance, inventory, combat stats, the Lab's avoid list. Shared by the browser and the server. |
-| `apps/server` | Fastify API + PostgreSQL: accounts, sessions, brutes, opponents, fights, level-ups, Lab saves. SQL migrations in `migrations/`. |
-| `apps/web` | Vite + React app: Classic screens and the Laboratory. Ruffle is pinned and self-hosted from `public/ruffle`; SWFs live in `public/swf`. |
+| `apps/server` | Fastify API + PostgreSQL: accounts, sessions, brutes, opponents, fights, level-ups, Lab and tournament saves. SQL migrations in `migrations/`. |
+| `apps/web` | Vite + React app: Classic, Laboratory, and Tournaments pages. Ruffle is pinned and self-hosted from `public/ruffle`; SWFs live in `public/swf`. |
 | `legacy/` | The previous single-page lab and the client-only prototype, kept for reference. |
+
+## Engine knowledge base
+
+For a readable guide to the original Haxe engine, start with the [engine knowledge base](docs/engine/index.md), also shown in the app's **Guide** page (`/guide`, rendered from these same files). It links concept pages for the arena, shared data definitions, gladiator progression, and localization.
 
 ## Development
 

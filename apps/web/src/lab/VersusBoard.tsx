@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { bitsToHex, displayLevel, levelUpsFor, newLabBrute, supportOf, type Description, type FightSpec, type SpecBrute } from "@mybrute/engine";
+import { bitsToHex, displayLevel, levelUpsFor, MAX_LAB_LEVEL, newLabBrute, supportOf, type Description, type FightSpec, type SpecBrute } from "@mybrute/engine";
 import { Portrait } from "../swf/Portrait";
 import { parseIntStrict } from "../ui/CommitInput";
 import type { LabAction } from "./state";
@@ -98,7 +98,7 @@ function AddBrute({ team, takenIds, onAdd }: { team: 0 | 1; takenIds: number[]; 
   if (!open) return <button type="button" className="add-brute" onClick={() => setOpen(true)}>Add a brute to team {team}</button>;
   const submit = () => {
     const lvl = parseIntStrict(level), idv = id ? parseIntStrict(id) : undefined;
-    if (lvl === null || lvl < 1 || lvl > 500) return setError("Level is 1 to 500.");
+    if (lvl === null || lvl < 1 || lvl > MAX_LAB_LEVEL) return setError(`Level is 1 to ${MAX_LAB_LEVEL}.`);
     if (idv === null || (idv !== undefined && (idv < 1 || idv > 2147483647))) return setError("Id is a whole number from 1 to 2147483647.");
     if (idv !== undefined && takenIds.includes(idv)) return setError(`Id ${idv} is already in this fight.`);
     onAdd(newLabBrute(team, { levelUps: levelUpsFor(lvl), id: idv, name: name.trim() || undefined, takenIds, randomBits }));

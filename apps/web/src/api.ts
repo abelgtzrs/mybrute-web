@@ -1,5 +1,6 @@
 // Typed client for the MyBrute++ server. The server is authoritative; nothing here decides game outcomes.
 import type { FighterStats, FightSpec, LevelOption, SpecBrute } from "@mybrute/engine";
+import type { Tournament } from "./tournaments/model";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
@@ -82,6 +83,10 @@ export const api = {
   labBrutes: () => request<{ items: { key: string; label: string; brute: SpecBrute; savedAt: string }[] }>("GET", "/api/lab/brutes"),
   saveLabBrute: (label: string, brute: SpecBrute) => request<{ item: { key: string; label: string; brute: SpecBrute; savedAt: string } }>("POST", "/api/lab/brutes", { label, brute }),
   deleteLabBrute: (key: string) => request<{ ok: true }>("DELETE", `/api/lab/brutes/${key}`),
+  tournaments: () => request<{ items: { key: string; label: string; tournament: Tournament; savedAt: string }[] }>("GET", "/api/tournaments"),
+  saveTournament: (label: string, tournament: Tournament, key?: string) =>
+    request<{ item: { key: string; label: string; tournament: Tournament; savedAt: string } }>("POST", key ? `/api/tournaments/${key}` : "/api/tournaments", { label, tournament }),
+  deleteTournament: (key: string) => request<{ ok: true }>("DELETE", `/api/tournaments/${key}`),
 };
 
 // ---------------------------------------------------------------- admin

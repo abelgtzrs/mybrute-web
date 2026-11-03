@@ -12,6 +12,7 @@ import { BONUSES } from "./generated/bonuses.js";
 
 export type Choice = 0 | 1;
 
+export const MAX_LAB_LEVEL = 5000;
 export const MIN_SEED_ID = 1;
 /** Payload integers go through the Haxe serializer as Flash signed 32-bit ints. */
 export const MAX_SEED_ID = 2 ** 31 - 1;

@@ -65,12 +65,12 @@ export function StatsPanel({ spec, sim, stats, pets, errors }: Props) {
   const [showEmpty, setShowEmpty] = useState(false);
   const { name } = useNames();
   if (errors.length || !sim || !stats) {
-    return <section className="stats-col panel" aria-label="Statistics"><h2>Statistics</h2><p className="muted">The statistics appear once the fight can run.</p></section>;
+    return <div className="stats-col" aria-label="Statistics"><p className="muted">The statistics appear once the fight can run.</p></div>;
   }
   const cols = spec.brutes.map((b) => [b, stats.get(b.id)] as const).filter((x): x is [typeof x[0], FighterStats] => !!x[1]);
   const shared = cols.some(([, s]) => s.teamShared);
   return (
-    <section className="stats-col panel" aria-label="Statistics">
+    <div className="stats-col" aria-label="Statistics">
       <p className={"verdict" + (sim.win === null ? "" : ` team-${sim.win}`)}>
         {sim.win === null ? "Draw: the arena's 1000-action limit was reached." : `Team ${sim.win} wins`}
         <span className="muted"> in {sim.history.length} events</span>
@@ -112,6 +112,6 @@ export function StatsPanel({ spec, sim, stats, pets, errors }: Props) {
         )}
       </div>
       {shared && <p className="hint">With several brutes on a team, counters, ripostes and pet damage are team totals.</p>}
-    </section>
+    </div>
   );
 }

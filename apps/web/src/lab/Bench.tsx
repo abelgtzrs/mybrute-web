@@ -1,7 +1,9 @@
-import { useRef } from "react";
-import { describe, displayLevel, type SpecBrute } from "@mybrute/engine";
+import { useEffect, useRef, useState } from "react";
+import { bitsToHex, describe, destiny, displayLevel, type BonusKind, type SpecBrute } from "@mybrute/engine";
 import { Portrait } from "../swf/Portrait";
+import { useNames } from "../ui/language";
 import type { SavedBrute } from "./storage";
+import { exportBrute, importBrute } from "./bruteCode";
 
 interface Props {
   items: SavedBrute[];
@@ -13,18 +15,62 @@ interface Props {
   onEdit: (item: SavedBrute) => void;
   editing: string | null;
   where: "account" | "browser";
+  /** saves a brute read from a pasted code to the bench */
+  onImport: (b: SpecBrute) => void;
+  onNotify: (msg: string) => void;
 }
 
 /** Saved brute states, ready to drop into either team. */
-export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where }: Props) {
+export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where, onImport, onNotify }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
-  const close = () => ref.current?.close();
+  const btn = useRef<HTMLButtonElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  // the drawer grows out of the button: same left edge and bottom, twice its width
+  const place = () => {
+    const r = btn.current?.getBoundingClientRect();
+    const d = ref.current;
+    if (!r || !d) return;
+    d.style.left = `${r.left}px`;
+    d.style.bottom = `${window.innerHeight - r.bottom}px`;
+    d.style.width = `${Math.min(r.width * 2, window.innerWidth - r.left - 8)}px`;
+  };
+  const open = () => { place(); ref.current?.show(); setIsOpen(true); };
+  const close = () => { ref.current?.close(); setIsOpen(false); btn.current?.focus(); };
+  useEffect(() => {
+    if (!isOpen) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !btn.current?.contains(t)) close();
+    };
+    const key = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("resize", place);
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", key);
+    return () => {
+      window.removeEventListener("resize", place);
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", key);
+    };
+  }, [isOpen]);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const doImport = () => {
+    try {
+      onImport(importBrute(code));
+      setCode("");
+      setCodeError("");
+    } catch (e) {
+      setCodeError((e as Error).message);
+    }
+  };
+  const copyCode = (b: SpecBrute) =>
+    navigator.clipboard.writeText(exportBrute(b)).then(() => onNotify("Brute code copied."), () => onNotify("Couldn't reach the clipboard."));
   return (
     <>
-    <button type="button" className="btn bench-open" aria-haspopup="dialog" onClick={() => ref.current?.showModal()}>
+    <button ref={btn} type="button" className="btn bench-open" aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => (isOpen ? close() : open())}>
       Bench <span className="muted">{items.length} saved</span>
     </button>
-    <dialog ref={ref} className="dialog" aria-labelledby="bench-title">
+    <dialog ref={ref} className="dialog drawer" aria-labelledby="bench-title">
     <section className="bench dialog-body">
       <div className="row bench-head">
         <h2 id="bench-title">Bench</h2>
@@ -51,6 +97,7 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
                   ) : ([0, 1] as const).map((t) => (
                     <button key={t} type="button" className={`btn small team-${t}`} aria-label={`Add ${s.label} to team ${t}`} onClick={() => { onUse(s.brute, t); close(); }}>+ Team {t}</button>
                   ))}
+                  <button type="button" className="btn small ghost" aria-label={`Copy code for ${s.label}`} onClick={() => copyCode(s.brute)}>Export</button>
                   <button type="button" className="btn small ghost" aria-label={`Delete ${s.label}`} onClick={() => onDelete(s.key)}>Delete</button>
                 </div>
               </li>
@@ -58,6 +105,14 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
           })}
         </ul>
       )}
+      <div className="bench-import">
+        <label>
+          Import a brute code
+          <textarea rows={2} value={code} placeholder="MYBRUTE1:..." onChange={(e) => setCode(e.target.value)} />
+        </label>
+        <button type="button" className="btn small" disabled={!code.trim()} onClick={doImport}>Import to bench</button>
+        {codeError && <p className="field-error" role="alert">{codeError}</p>}
+      </div>
     </section>
     </dialog>
     </>
@@ -65,11 +120,49 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
 }
 
 function BenchStats({ brute }: { brute: SpecBrute }) {
+  const { name } = useNames();
   let fin;
-  try { fin = describe(brute.id, brute.levelUps, brute.choices).fin; } catch { return null; }
+  let fate;
+  try {
+    fin = describe(brute.id, brute.levelUps, brute.choices).fin;
+    fate = destiny(brute.id);
+  } catch { return null; }
+  const groups: [string, BonusKind, string[]][] = [
+    ["Weapons", "Weapons", fin.weapons],
+    ["Supers", "Super", fin.supers],
+    ["Pets", "Followers", fin.followers],
+    ["Skills", "Permanent", fin.perms],
+    ["Talents", "Talent", fin.talents],
+  ];
+  const picks = brute.choices.slice(0, brute.levelUps);
+  const facts: [string, string | number][] = [
+    ["Id", brute.id],
+    ["Level-ups", brute.levelUps],
+    ["Second options", picks.filter((c) => c === 1).length],
+    ["Max HP", fin.lifeMax],
+    ["Stance", fate.stance ?? "Normal"],
+    ["Banned", fate.banned.length],
+    ["Avoiding", brute.avoid?.length ?? 0],
+    ["Bits", bitsToHex(brute.choices, brute.levelUps) || "None"],
+  ];
   return (
-    <span className="tile-stats">
-      <abbr title="Life">HP</abbr> {fin.life} <abbr title="Strength">STR</abbr> {fin.force} <abbr title="Agility">AGI</abbr> {fin.agility} <abbr title="Speed">SPD</abbr> {fin.speed}
-    </span>
+    <>
+      <span className="tile-stats">
+        <abbr title="Life">HP</abbr> {fin.life} <abbr title="Strength">STR</abbr> {fin.force} <abbr title="Agility">AGI</abbr> {fin.agility} <abbr title="Speed">SPD</abbr> {fin.speed}
+      </span>
+      <details className="bench-more">
+        <summary>
+          {groups.filter(([, , items]) => items.length).map(([label, , items]) => `${items.length} ${label.toLowerCase()}`).join(" · ") || "Details"}
+        </summary>
+        <span className="bench-facts">
+          {facts.map(([k, v]) => <span key={k}><span className="muted">{k}</span> {v}</span>)}
+        </span>
+        {groups.filter(([, , items]) => items.length).map(([label, kind, items]) => (
+          <span key={label} className="bench-kit" title={label}>
+            {items.map((x) => <span key={x} className={`chip kind-${kind}`}>{name(kind, x)}</span>)}
+          </span>
+        ))}
+      </details>
+    </>
   );
 }
