@@ -44,7 +44,7 @@
 .tournament-standings li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
 .tournament-standings li > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tournament-standings li small { grid-column: 2 / -1; }
-.tournament-watch .fight-swf { display: block; width: min(100%, 800px); aspect-ratio: 800 / 450; margin: 10px auto 0; border: 0; }
+.tournament-watch .fight-swf { display: block; width: min(100%, 800px); aspect-ratio: 5 / 3; margin: 10px auto 0; border: 0; }
 
 .tournament-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 440px); gap: 14px; align-items: start; }
 .tournament-left { min-width: 0; display: grid; gap: 14px; }
@@ -52,7 +52,7 @@
 .tournament-left > .panel p { color: var(--ink-2); }
 .tournament-fight { position: sticky; top: 0; display: grid; gap: 10px; color: var(--ink); }
 .tournament-fight h3 { margin: 0; color: var(--ink); font: 20px var(--font-display); }
-.tournament-fight .fight-swf { display: block; width: 100%; aspect-ratio: 800 / 450; border: 0; background: #000; }
+.tournament-fight .fight-swf { display: block; width: 100%; aspect-ratio: 5 / 3; border: 0; background: #000; }
 .fight-idle { margin: 0; color: var(--ink-2); }
 .fight-versus { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fight-side { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border: 1px solid var(--paper-edge); border-radius: 8px; background: var(--paper); transition: opacity .4s, box-shadow .4s; }

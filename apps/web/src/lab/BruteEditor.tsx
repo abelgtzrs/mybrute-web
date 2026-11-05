@@ -166,6 +166,11 @@ export function BruteEditor({
                     >
                       Random
                     </button>
+                    <FindIdButton
+                      brute={brute}
+                      takenIds={takenIds}
+                      onPick={(id) => update({ id })}
+                    />
                   </span>
                 </label>
               </div>
@@ -342,6 +347,77 @@ export function BruteEditor({
           />
         )}
       </section>
+    </>
+  );
+}
+
+function FindIdButton({
+  brute,
+  takenIds,
+  onPick,
+}: {
+  brute: SpecBrute;
+  takenIds: number[];
+  onPick: (id: number) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [start, setStart] = useState(String(brute.id));
+  const [limit, setLimit] = useState("50000");
+  const [stance, setStance] = useState("any");
+  const [banned, setBanned] = useState<string[]>([]);
+  const [results, setResults] = useState<number[]>([]);
+  const [searched, setSearched] = useState(false);
+  const open = () => {
+    setStart(String(brute.id));
+    setResults([]);
+    setSearched(false);
+    setBanned([]);
+    dialog.current?.showModal();
+  };
+  const find = () => {
+    const from = Math.max(1, Number(start) || 1);
+    const count = Math.min(250000, Math.max(1, Number(limit) || 1));
+    const found: number[] = [];
+    const taken = new Set(takenIds);
+    for (let id = from; id <= 2147483647 && id < from + count && found.length < 20; id++) {
+      if (taken.has(id) || (stance !== "any" && String(destiny(id).stance) !== stance)) continue;
+      const destinyBans = new Set(destiny(id).banned.map((b) => bonusKey(b.kind, b.id)));
+      if (banned.some((key) => destinyBans.has(key))) continue;
+      found.push(id);
+    }
+    setResults(found);
+    setSearched(true);
+  };
+  return (
+    <>
+      <button type="button" className="btn small ghost" onClick={open}>Find ID</button>
+      <dialog ref={dialog} className="dialog">
+        <form method="dialog" className="dialog-body" onSubmit={(e) => e.preventDefault()}>
+          <h2>Find an ID</h2>
+          <p className="hint">Search nearby seed IDs using requirements. The current brute’s level and choices are used for reward checks.</p>
+          <div className="form-grid">
+            <label>Start ID<input value={start} inputMode="numeric" onChange={(e) => setStart(e.target.value)} /></label>
+            <label>IDs to check<input value={limit} inputMode="numeric" onChange={(e) => setLimit(e.target.value)} /></label>
+            <label>Stance<select value={stance} onChange={(e) => setStance(e.target.value)}><option value="any">Any stance</option><option value="">Normal stance</option><option value="0">Stance 0</option><option value="1">Stance 1</option></select></label>
+          </div>
+          <fieldset className="avoid-group">
+            <legend>Weapons / skills that must not be banned</legend>
+            <div className="row">
+              {BONUSES.filter((b) => b.kind === "Weapons" || b.kind === "Permanent").map((b) => {
+                const key = bonusKey(b.kind, b.id);
+                const checked = banned.includes(key);
+                return <button key={key} type="button" className="chip toggle" aria-pressed={checked} onClick={() => setBanned((current) => checked ? current.filter((x) => x !== key) : [...current, key])}>{b.kind === "Permanent" ? "Skill" : "Weapon"}: {b.id}</button>;
+              })}
+            </div>
+            <p className="hint">Selected items must be available for the candidate ID.</p>
+          </fieldset>
+          <div className="row">
+            <button type="button" className="btn" onClick={find}>Search</button>
+            <button type="button" className="btn ghost" onClick={() => dialog.current?.close()}>Cancel</button>
+          </div>
+          {searched && <div><h3>{results.length ? "Matching IDs" : "No matches"}</h3>{results.length > 0 && <div className="row">{results.map((id) => <button key={id} type="button" className="btn small ghost" onClick={() => { onPick(id); dialog.current?.close(); }}>{id}</button>)}</div>}</div>}
+        </form>
+      </dialog>
     </>
   );
 }
