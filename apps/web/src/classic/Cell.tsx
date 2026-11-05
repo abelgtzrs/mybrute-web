@@ -7,6 +7,7 @@ import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
 import { InventoryPanel } from "../ui/InventoryPanel";
 import { useApi } from "../useApi";
+import { useNames } from "../ui/language";
 import { FightRow, ResultBadge } from "./FightRow";
 
 /** Narrow screens show one part at a time: the brute, its kit and level-ups, or its record. */
@@ -16,6 +17,7 @@ const PHONE = "(max-width: 699px)";
 export function CellPage() {
   const { id = "" } = useParams();
   const { data, error } = useApi(() => api.cell(id), [id]);
+  const { option, lang } = useNames();
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "brute" : "kit"));
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data) return <div className="page"><p className="page-status">Loading the cell…</p></div>;
@@ -68,14 +70,14 @@ export function CellPage() {
                   {[...data.levelUps].reverse().map((l) => (
                     <li key={l.index}>
                       <span className="lv">Lv {l.level}</span>
-                      <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{l.chosen.text}</span>
-                      <span className="muted small">instead of {l.other.text}</span>
+                      <span className={"opt-pill" + (l.chosen.t === "b" ? ` kind-${l.chosen.kind}` : "")}>{option(l.chosen)}</span>
+                      <span className="muted small">instead of {option(l.other)}</span>
                     </li>
                   ))}
                 </ol>
               )}
             </div>
-            <InventoryPanel brute={labBrute} />
+            <InventoryPanel brute={labBrute} defaultLang={lang} />
           </section>
         </div>
 

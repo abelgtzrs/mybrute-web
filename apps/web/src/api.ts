@@ -1,5 +1,6 @@
 // Typed client for the MyBrute++ server. The server is authoritative; nothing here decides game outcomes.
 import type { FighterStats, FightSpec, LevelOption, SpecBrute } from "@mybrute/engine";
+import type { Tournament } from "./tournaments/model";
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
@@ -65,8 +66,8 @@ export const api = {
   login: (username: string, password: string) => request<{ user: User }>("POST", "/api/auth/login", { username, password }),
   logout: () => request<{ ok: true }>("POST", "/api/auth/logout"),
 
-  brutes: () => request<{ brutes: BruteSummary[]; maxBrutes: number }>("GET", "/api/brutes"),
-  createBrute: (b: { name: string; seedId: number; gfx: string }) => request<{ brute: BruteSummary }>("POST", "/api/brutes", b),
+  brutes: () => request<{ brutes: BruteSummary[]; maxBrutes: number; maxImportLevel: number }>("GET", "/api/brutes"),
+  createBrute: (b: { name: string; seedId: number; gfx: string; levelUps?: number; choices?: number[] }) => request<{ brute: BruteSummary }>("POST", "/api/brutes", b),
   cell: (id: string) => request<Cell>("GET", `/api/brutes/${id}`),
   deleteBrute: (id: string) => request<{ ok: true }>("DELETE", `/api/brutes/${id}`),
   opponents: (id: string) => request<{ opponents: Opponent[] }>("POST", `/api/brutes/${id}/opponents`),
@@ -82,12 +83,16 @@ export const api = {
   labBrutes: () => request<{ items: { key: string; label: string; brute: SpecBrute; savedAt: string }[] }>("GET", "/api/lab/brutes"),
   saveLabBrute: (label: string, brute: SpecBrute) => request<{ item: { key: string; label: string; brute: SpecBrute; savedAt: string } }>("POST", "/api/lab/brutes", { label, brute }),
   deleteLabBrute: (key: string) => request<{ ok: true }>("DELETE", `/api/lab/brutes/${key}`),
+  tournaments: () => request<{ items: { key: string; label: string; tournament: Tournament; savedAt: string }[] }>("GET", "/api/tournaments"),
+  saveTournament: (label: string, tournament: Tournament, key?: string) =>
+    request<{ item: { key: string; label: string; tournament: Tournament; savedAt: string } }>("POST", key ? `/api/tournaments/${key}` : "/api/tournaments", { label, tournament }),
+  deleteTournament: (key: string) => request<{ ok: true }>("DELETE", `/api/tournaments/${key}`),
 };
 
 // ---------------------------------------------------------------- admin
 
 export interface Paged { total: number; page: number; pageSize: number }
-export interface Settings { maxBrutesDefault: number; dailyFights: number }
+export interface Settings { maxBrutesDefault: number; dailyFights: number; maxImportLevel: number }
 export interface LogEntry {
   id: string; at: string; admin: { id: string | null; username: string }; action: string;
   target: { kind: "user" | "brute" | "settings"; id: string | null; label: string }; detail: Record<string, unknown>;
@@ -140,7 +145,7 @@ export const admin = {
   fights: (q: { q?: string; result?: string; brute?: string; page?: number }) => request<Paged & { fights: AdminFight[] }>("GET", `/api/admin/fights${qs(q)}`),
   fight: (id: string) => request<{ fight: FightDetail; brute: BruteSummary; owner: { id: string; username: string } }>("GET", `/api/admin/fights/${id}`),
 
-  settings: () => request<{ settings: Settings; limits: { maxBrutes: number; dailyFights: number; xp: number; reason: number } }>("GET", "/api/admin/settings"),
+  settings: () => request<{ settings: Settings; limits: { maxBrutes: number; dailyFights: number; importLevel: number; xp: number; reason: number } }>("GET", "/api/admin/settings"),
   saveSettings: (s: Partial<Settings>) => request<{ settings: Settings }>("POST", "/api/admin/settings", s),
 
   log: (q: { page?: number; kind?: string }) => request<Paged & { entries: LogEntry[] }>("GET", `/api/admin/log${qs(q)}`),

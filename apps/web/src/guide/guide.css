@@ -1,0 +1,33 @@
+.guide { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 14px; max-width: 1100px; margin: 0 auto; align-items: start; }
+.guide-nav { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; }
+.guide-group { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.guide-nav .guide-group h4 { margin: 0 0 2px 10px; font: 12px var(--font-body); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+.guide-nav a { display: block; padding: 8px 10px; border-radius: var(--radius-control); color: var(--ink); text-decoration: none; font-weight: 700; }
+.guide-nav a small { display: block; font-weight: 400; color: var(--ink-2); }
+.guide-nav a:hover { background: var(--paper-lo); }
+.guide-nav a.active { background: var(--gold-tint); box-shadow: inset 3px 0 0 var(--gold); }
+
+.guide-body { min-width: 0; line-height: 1.6; color: var(--ink); }
+.guide-body h2 { font-size: 30px; margin: 0 0 12px; }
+.guide-body h3 { font-size: 22px; margin: 26px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--paper-edge); scroll-margin-top: 8px; }
+.guide-body h4 { font: 18px var(--font-display); margin: 20px 0 6px; scroll-margin-top: 8px; }
+.guide-body h5 { margin: 14px 0 4px; }
+.guide-body p, .guide-body li { font-size: 15.5px; }
+.guide-body ul, .guide-body ol { padding-left: 22px; }
+.guide-body li { margin: 4px 0; }
+.guide-body a { color: var(--kind-permanent); font-weight: 700; }
+.guide-body code { background: var(--paper-lo); border-radius: 4px; padding: 1px 5px; font-size: 0.9em; overflow-wrap: anywhere; }
+
+.guide-table { overflow-x: auto; margin: 10px 0 16px; border: 1px solid var(--paper-edge); border-radius: var(--radius-control); }
+.guide-table table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+.guide-table th { background: var(--paper-lo); text-align: left; }
+.guide-table th, .guide-table td { padding: 7px 10px; border-bottom: 1px solid var(--paper-edge); vertical-align: top; }
+.guide-table tr:last-child td { border-bottom: 0; }
+.guide-table td:first-child code { white-space: nowrap; overflow-wrap: normal; }
+
+@media (max-width: 760px) {
+  .guide { grid-template-columns: 1fr; }
+  .guide-nav { position: static; flex-direction: row; flex-wrap: wrap; }
+  .guide-nav h3 { width: 100%; }
+  .guide-nav a small { display: none; }
+}

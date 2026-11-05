@@ -11,7 +11,7 @@ import { bruteNameProblem, classicDay, DAILY_TIME_ZONE, fightsUsedToday, isPendi
 
 const PAGE_SIZE = 25;
 const LOG_PAGE_SIZE = 50;
-export const LIMITS = { maxBrutes: 1000, dailyFights: 1000, xp: 1_000_000, reason: 200 } as const;
+export const LIMITS = { maxBrutes: 1000, dailyFights: 1000, importLevel: 500, xp: 1_000_000, reason: 200 } as const;
 
 export function requireAdmin(req: FastifyRequest): SessionUser {
   if (!req.user) throw unauthorized();
@@ -386,6 +386,7 @@ export async function setSettings(db: Db, admin: SessionUser, b: unknown) {
   };
   check("maxBrutesDefault", "max_brutes_default", LIMITS.maxBrutes, "The brute limit");
   check("dailyFights", "daily_fights", LIMITS.dailyFights, "Daily fights");
+  check("maxImportLevel", "max_import_level", LIMITS.importLevel, "The import level");
   return withTx(db, async (tx) => {
     await tx.query("select 1 from settings for update");
     const before = await classic.getSettings(tx);

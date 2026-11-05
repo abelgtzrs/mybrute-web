@@ -1,0 +1,177 @@
+/* =====================================================================
+   Lab themes. "Workbench" is the shared leather-and-paper look (no rules
+   here apply). Every other theme is a terminal: .lab.term turns on the flat,
+   monospaced rules below, and [data-theme] supplies nine base colours that
+   the shared tokens are derived from. Team colours stay distinct in every
+   theme because they carry meaning. Martian Mono throughout: condensed bold
+   for names and headings, regular for data.
+   ===================================================================== */
+.lab[data-theme="slate"] {
+  --x-bg: #0b1213; --x-panel: #121b1d; --x-edge: #283a3e; --x-text: #d3ded8;
+  --x-accent: #f2a93b; --x-on-accent: #0b1213; --x-team0: #4f9fe0; --x-team1: #e5594a; --x-good: #74c96f;
+}
+.lab[data-theme="amber"] {
+  --x-bg: #0f0a05; --x-panel: #17110a; --x-edge: #3b2c17; --x-text: #f5b453;
+  --x-accent: #fff1cf; --x-on-accent: #0f0a05; --x-team0: #6fb3c8; --x-team1: #e8674a; --x-good: #c8d96a;
+}
+.lab[data-theme="phosphor"] {
+  --x-bg: #050d07; --x-panel: #0a160d; --x-edge: #1d3a24; --x-text: #8ef0a0;
+  --x-accent: #e6ffb0; --x-on-accent: #050d07; --x-team0: #5cc8e8; --x-team1: #f2705a; --x-good: #c8f56a;
+}
+.lab[data-theme="solarized"] {
+  --x-bg: #002b36; --x-panel: #073642; --x-edge: #2a525c; --x-text: #93a1a1;
+  --x-accent: #b58900; --x-on-accent: #002b36; --x-team0: #268bd2; --x-team1: #dc322f; --x-good: #859900;
+}
+.lab[data-theme="mainframe"] {
+  --x-bg: #071433; --x-panel: #0d1d45; --x-edge: #22397a; --x-text: #dfe8ff;
+  --x-accent: #4fe3d0; --x-on-accent: #071433; --x-team0: #6aa8ff; --x-team1: #ff6f8a; --x-good: #7ee081;
+}
+.lab[data-theme="printout"] {
+  --x-bg: #d9ddd8; --x-panel: #f4f6f2; --x-edge: #b4bcb5; --x-text: #1c2722;
+  --x-accent: #1f5fbf; --x-on-accent: #ffffff; --x-team0: #1f6fb8; --x-team1: #c0392b; --x-good: #2e7d32;
+  color-scheme: light;
+}
+
+.lab.term {
+  --night: color-mix(in srgb, var(--x-bg) 60%, #000);
+  --leather: var(--x-bg);
+  --leather-2: var(--x-panel);
+  --leather-3: color-mix(in srgb, var(--x-edge) 70%, var(--x-panel));
+  --on-leather: var(--x-text);
+  --on-leather-2: color-mix(in srgb, var(--x-text) 70%, var(--x-bg));
+
+  --paper: var(--x-panel);
+  --paper-hi: color-mix(in srgb, var(--x-panel) 90%, var(--x-text));
+  --paper-lo: color-mix(in srgb, var(--x-panel) 55%, var(--x-bg));
+  --paper-edge: var(--x-edge);
+  --ink: var(--x-text);
+  --ink-2: color-mix(in srgb, var(--x-text) 72%, var(--x-panel));
+  --ink-3: color-mix(in srgb, var(--x-text) 48%, var(--x-panel));
+
+  /* -deep is team colour used as text, so it leans toward the text colour */
+  --team0: var(--x-team0);
+  --team0-deep: color-mix(in srgb, var(--x-team0) 60%, var(--x-text));
+  --team0-tint: color-mix(in srgb, var(--x-team0) 18%, var(--x-panel));
+  --team1: var(--x-team1);
+  --team1-deep: color-mix(in srgb, var(--x-team1) 60%, var(--x-text));
+  --team1-tint: color-mix(in srgb, var(--x-team1) 18%, var(--x-panel));
+  --gold: var(--x-accent);
+  --gold-hi: color-mix(in srgb, var(--x-accent) 70%, var(--x-text));
+  --gold-tint: color-mix(in srgb, var(--x-accent) 14%, var(--x-panel));
+  --grass: var(--x-good);
+
+  --kind-weapons: color-mix(in srgb, #b8743a 60%, var(--x-text));
+  --kind-super: color-mix(in srgb, #8a5bd6 60%, var(--x-text));
+  --kind-followers: color-mix(in srgb, #4f9a48 60%, var(--x-text));
+  --kind-permanent: color-mix(in srgb, #3f86c6 60%, var(--x-text));
+  --kind-talent: color-mix(in srgb, #c08a1a 60%, var(--x-text));
+
+  --radius-panel: 3px;
+  --radius-control: 2px;
+  --edge: var(--x-edge);
+  --shadow-panel: none;
+  --font-display: "Martian Mono", ui-monospace, Consolas, monospace;
+  --font-body: "Martian Mono", ui-monospace, Consolas, monospace;
+
+  --t-meta: 11px;
+  --t-small: 12px;
+  --t-body: 13px;
+  --t-h3: 14px;
+  --t-h2: 16px;
+  --t-title: 20px;
+
+  font: 400 var(--t-body)/1.5 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-leather);
+  /* paints the whole of main (which clips it) without main knowing the theme */
+  box-shadow: 0 0 0 100vmax var(--x-bg);
+  background: var(--x-bg);
+}
+
+/* condensed bold for anything that names something */
+.lab.term :is(h1, h2, h3, h4, .tile-name, .team-name, .verdict, .vs, .lv, .stat-row dd, .panel-tabs button) {
+  font-family: var(--font-display); font-stretch: 75%; font-weight: 700; letter-spacing: 0; text-shadow: none;
+}
+.lab.term .name-input { font-stretch: 75% !important; font-weight: 700 !important; font-size: 20px !important; }
+.lab.term .panel h2, .lab.term .panel h3 { font-weight: 700; }
+
+/* flat surfaces: no gradients, shadows or lift */
+.lab.term :is(.panel, .tile, .add-form, .support, .dialog) { background: var(--paper); box-shadow: none; }
+.lab.term :is(.stat-row div, .avoid, .stage, .bench-item) { border-radius: var(--radius-panel); box-shadow: none; }
+.lab.term .stage { box-shadow: inset 0 0 0 1px var(--edge); }
+
+.lab.term .btn { background: var(--paper-hi); border: 1px solid var(--paper-edge); color: var(--ink); box-shadow: none; font-weight: 600; }
+.lab.term .btn:hover:not(:disabled) { background: var(--leather-3); border-color: var(--ink-3); }
+.lab.term .btn:active:not(:disabled) { transform: none; background: var(--paper-lo); }
+.lab.term .btn.ghost { background: transparent; border-color: var(--paper-edge); }
+.lab.term .btn.danger { color: var(--team1-deep); background: transparent; }
+.lab.term .btn.play { font: 700 var(--t-body)/1 var(--font-display); min-height: 40px; background: var(--gold); border-color: var(--gold); color: var(--x-on-accent); text-shadow: none; }
+.lab.term .btn.play:hover:not(:disabled) { background: var(--gold-hi); border-color: var(--gold-hi); }
+/* team colours are mid-tone here, so text on them is dark */
+.lab.term .btn.team-0, .lab.term .seg:has(input:checked).team-0 { background: var(--team0); border-color: var(--team0); color: var(--x-on-accent); }
+.lab.term .btn.team-1, .lab.term .seg:has(input:checked).team-1 { background: var(--team1); border-color: var(--team1); color: var(--x-on-accent); }
+.lab.term .seg { border-width: 1px; border-color: var(--paper-edge); }
+
+.lab.term :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  background: var(--paper-lo); border: 1px solid var(--paper-edge); color: var(--ink); font-weight: 400; box-shadow: none;
+}
+.lab.term :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.lab.term textarea { font-family: var(--font-body); font-size: var(--t-small); }
+.lab.term label, .lab.term .team-switch legend { font-weight: 500; }
+.lab.term :focus-visible { outline-width: 2px; }
+
+/* toolbar reads as the screen's status line */
+.lab.term .toolbar { padding-bottom: 10px; border-bottom: 1px solid var(--paper-edge); }
+.lab.term .toolbar-title h1 { color: var(--ink); }
+
+/* versus board */
+.lab.term .team-name { background: none; border: 0; border-top: 2px solid; border-radius: 0; box-shadow: none; padding: 6px 0 2px; font-size: var(--t-h2); }
+.lab.term .team-0 .team-name { color: var(--team0-deep); border-color: var(--team0); }
+.lab.term .team-1 .team-name { color: var(--team1-deep); border-color: var(--team1); }
+.lab.term .vs { font-size: var(--t-h3); color: var(--ink-3); transform: none; }
+.lab.term .tile { border-left-width: 3px; transition: none; }
+.lab.term .team-1 .tile { border-right-width: 3px; }
+.lab.term .tile:hover { transform: none; border-color: var(--ink-3); }
+.lab.term .team-0 .tile:hover { border-left-color: var(--team0); }
+.lab.term .team-1 .tile:hover { border-right-color: var(--team1); }
+.lab.term .tile.selected { background: var(--gold-tint); outline: 1px solid var(--gold); outline-offset: 0; }
+.lab.term .tile-name { font-size: 16px; }
+.lab.term .tile-stats, .lab.term .tile-level, .lab.term .tile-id { font-weight: 400; }
+
+/* live readouts are amber */
+.lab.term .stat-row dd { color: var(--gold-hi); font-size: 20px; }
+.lab.term .stat-row dt, .lab.term .kit dt, .lab.term .facts dt, .lab.term .vstats-group th { font-weight: 500; }
+.lab.term .chip { border-radius: var(--radius-control); font-weight: 500; }
+.lab.term .chip.toggle[aria-pressed="true"] { color: var(--x-on-accent); }
+
+.lab.term .tab { font-weight: 500; }
+.lab.term .tab[aria-selected="true"] { border-bottom-width: 2px; }
+.lab.term .opt { border-width: 1px; font-weight: 400; }
+.lab.term .opt.bonus { font-weight: 600; }
+.lab.term .opt[aria-pressed="true"] { box-shadow: inset 4px 0 0 var(--kind), 0 0 0 1px var(--gold); border-color: var(--gold); }
+
+.lab.term .verdict { font-size: var(--t-h2); }
+.lab.term .vstats { font-weight: 400; }
+.lab.term .log-lines { background: var(--paper-lo); font-weight: 400; font-size: var(--t-small); }
+.lab.term .log-lines .i { font-weight: 400; }
+
+.lab.term .panel-tabs button { background: var(--paper); border-color: var(--paper-edge); font-size: var(--t-body); }
+.lab.term .panel-tabs button[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--x-on-accent); }
+.lab.term .dialog { border-color: var(--paper-edge); }
+.lab.term .toast { font-weight: 500; box-shadow: none; }
+
+/* fewer boxes: borders only where they separate something */
+.lab.term .toolbar .btn.ghost { border-color: transparent; padding-inline: 8px; }
+.lab.term .toolbar .btn.ghost:hover:not(:disabled) { background: none; border-color: transparent; text-decoration: underline; text-underline-offset: 3px; }
+.lab.term .vs { display: none; }
+.lab.term .add-brute { border: 0; min-height: 30px; padding: 0 2px; text-align: left; color: var(--ink-3); background: none; }
+.lab.term .add-brute::before { content: "+ "; }
+.lab.term .add-brute:hover { color: var(--gold); background: none; }
+.lab.term .stat-row { gap: 0; border-block: 1px solid var(--paper-edge); padding: 6px 0; }
+.lab.term .stat-row div { background: none; padding: 0 10px 0 0; }
+.lab.term .stat-row div + div { padding-left: 10px; border-left: 1px solid var(--paper-edge); }
+.lab.term .avoid { background: none; border: 0; border-left: 2px solid var(--paper-edge); border-radius: 0; padding: 2px 0 2px 12px; }
+.lab.term .bench-item { background: none; border-top: 1px solid var(--paper-edge); border-radius: 0; padding: 6px 0; }
+.lab.term .bench-list { gap: 0; }
+.lab.term .support { background: var(--paper-lo); }
+.lab.term .extras { padding-top: 2px; }

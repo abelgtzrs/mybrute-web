@@ -8,6 +8,7 @@
   },
   "scripts": {
     "gen": "node scripts/gen-esm.mjs",
+    "export-native": "tsx scripts/export-native.ts",
     "golden": "node scripts/make-golden.cjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

@@ -20,11 +20,11 @@ interface BruteRow {
   xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date;
 }
 
-export interface Settings { maxBrutesDefault: number; dailyFights: number }
+export interface Settings { maxBrutesDefault: number; dailyFights: number; maxImportLevel: number }
 export async function getSettings(db: Db | Tx): Promise<Settings> {
   const rows = (await db.query<{ key: string; value: number }>("select key, value from settings")).rows;
   const get = (k: string, d: number) => Number(rows.find((r) => r.key === k)?.value ?? d);
-  return { maxBrutesDefault: get("max_brutes_default", 5), dailyFights: get("daily_fights", 10) };
+  return { maxBrutesDefault: get("max_brutes_default", 5), dailyFights: get("daily_fights", 10), maxImportLevel: get("max_import_level", 1) };
 }
 
 const kit = (d: Description) => ({ weapons: d.fin.weapons, supers: d.fin.supers, followers: d.fin.followers, perms: d.fin.perms, talents: d.fin.talents });
@@ -70,7 +70,7 @@ export async function listBrutes(db: Db, userId: string) {
   const rows = (await db.query<BruteRow>("select * from brutes where owner_id = $1 order by created_at, id", [userId])).rows;
   const rec = await records(db, rows.map((r) => r.id));
   const limit = (await db.query<{ max_brutes: number | null }>("select max_brutes from users where id = $1", [userId])).rows[0]?.max_brutes ?? s.maxBrutesDefault;
-  return { brutes: rows.map((b) => ({ ...summary(b, s, rec.get(b.id) ?? emptyRecord), attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))) })), maxBrutes: limit };
+  return { brutes: rows.map((b) => ({ ...summary(b, s, rec.get(b.id) ?? emptyRecord), attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))) })), maxBrutes: limit, maxImportLevel: Math.max(1, s.maxImportLevel) };
 }
 
 export async function createBrute(db: Db, userId: string, body: unknown) {
@@ -79,18 +79,26 @@ export async function createBrute(db: Db, userId: string, body: unknown) {
   if (nameProblem) throw badRequest(nameProblem);
   if (!isValidSeedId(b.seedId)) throw badRequest("The id is a whole number from 1 to 2147483647.");
   if (!isValidGfx(b.gfx)) throw badRequest("The appearance needs 16 numbers separated by semicolons.");
+  // a Lab import may start above level 1, up to the admin's cap; choices are its level-up picks (0/1)
+  const levelUps = b.levelUps ?? 0;
+  if (!Number.isInteger(levelUps) || (levelUps as number) < 0 || (levelUps as number) > 499) throw badRequest("The level is a whole number from 1 to 500.");
+  const choices = b.choices ?? [];
+  if (!Array.isArray(choices) || choices.length < (levelUps as number) || !choices.every((c) => c === 0 || c === 1)) throw badRequest("Send one level-up choice (0 or 1) per level.");
   const name = (b.name as string).trim();
   try {
     return await withTx(db, async (tx) => {
       // lock the account row so two creations at once can't both slip under the limit
       const user = (await tx.query<{ max_brutes: number | null }>("select max_brutes from users where id = $1 for update", [userId])).rows[0];
-      const limit = user.max_brutes ?? (await getSettings(tx)).maxBrutesDefault;
+      const settings = await getSettings(tx);
+      const limit = user.max_brutes ?? settings.maxBrutesDefault;
       const count = Number((await tx.query<{ c: string }>("select count(*) c from brutes where owner_id = $1", [userId])).rows[0].c);
       if (count >= limit) throw conflict(`You already have ${count} of ${limit} brutes. Delete one to make room.`, "brute_limit");
+      const cap = Math.max(1, settings.maxImportLevel);
+      if (displayLevel(levelUps as number) > cap) throw badRequest(`Brutes can be imported up to level ${cap}.`);
       const row = (await tx.query<BruteRow>(
-        "insert into brutes (owner_id, name, seed_id, gfx) values ($1, $2, $3, $4) returning *",
-        [userId, name, b.seedId, b.gfx])).rows[0];
-      return { brute: summary(row, await getSettings(tx), emptyRecord) };
+        "insert into brutes (owner_id, name, seed_id, gfx, level_ups, bits) values ($1, $2, $3, $4, $5, $6) returning *",
+        [userId, name, b.seedId, b.gfx, levelUps, bitsToHex(choices as Choice[], levelUps as number)])).rows[0];
+      return { brute: summary(row, settings, emptyRecord) };
     });
   } catch (e) {
     if (isUniqueViolation(e, "brutes_name_unique")) throw conflict("Another brute already has that name.", "name_taken");

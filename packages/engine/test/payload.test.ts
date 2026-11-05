@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LaBrute, buildParams, importPayload, newLabFight, payloadPlain, toEngineInput, validateSpec } from "../src";
+import { LaBrute, buildParams, describe as describeBrute, importPayload, newLabFight, payloadPlain, toEngineInput, validateSpec } from "../src";
 import fights from "./fixtures/fights.json";
 
 describe("payload import/build", () => {
@@ -26,6 +26,18 @@ describe("payload import/build", () => {
     const back = importPayload(buildParams(spec, { mini: "m", end: "e" })).spec;
     expect(back).toEqual(spec);
     expect(validateSpec(spec)).toEqual([]);
+  });
+
+  it("allows level 5000 and rejects levels above the simulator limit", () => {
+    const spec = newLabFight();
+    spec.brutes[0].levelUps = 4999;
+    spec.brutes[0].choices = Array.from({ length: 4999 }, () => 0);
+    expect(validateSpec(spec)).toEqual([]);
+    expect(describeBrute(spec.brutes[0].id, 4999, spec.brutes[0].choices).levels).toHaveLength(4999);
+
+    spec.brutes[0].levelUps = 5000;
+    spec.brutes[0].choices.push(0);
+    expect(validateSpec(spec).some((error) => error.includes("level must be between 1 and 5000"))).toBe(true);
   });
 
   it("rejects duplicate ids, empty teams and bad appearance", () => {

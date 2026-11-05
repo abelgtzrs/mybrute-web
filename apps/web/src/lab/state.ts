@@ -17,7 +17,8 @@ export type LabAction =
   | { type: "addBrute"; brute: SpecBrute }
   | { type: "removeBrute"; index: number }
   | { type: "setFight"; patch: Partial<Pick<FightSpec, "seed" | "arena" | "lang">> }
-  | { type: "setSupport"; team: 0 | 1; patch: Record<string, unknown> };
+  /** team props (_p0/_p1): _st support brute, _sab sabotaged, _poi poisoned */
+  | { type: "setTeam"; team: 0 | 1; patch: TeamProps };
 
 /** A fresh fight, or (from a Classic cell) a copy of that brute against a random brute of the same level. */
 export function initLab(copy?: SpecBrute): LabState {
@@ -31,6 +32,14 @@ export function initLab(copy?: SpecBrute): LabState {
   return { spec, originals: structuredClone(spec.brutes), selected: 0, sourceLabel: "New fight" };
 }
 
+/** A brute with an edit applied; choices stay one per level and the avoid list stays enforced, whatever changed. */
+export function patchBrute(b: SpecBrute, patch: Partial<SpecBrute>): SpecBrute {
+  const merged = { ...b, ...patch };
+  merged.choices = normalizeChoices(merged.choices, merged.levelUps);
+  if (merged.avoid?.length) merged.choices = applyAvoid(merged.id, merged.levelUps, merged.choices, merged.avoid).choices;
+  return merged;
+}
+
 export function labReducer(state: LabState, action: LabAction): LabState {
   const brutes = state.spec.brutes;
   switch (action.type) {
@@ -39,14 +48,7 @@ export function labReducer(state: LabState, action: LabAction): LabState {
     case "select":
       return { ...state, selected: action.index };
     case "updateBrute": {
-      const next = brutes.map((b, i) => {
-        if (i !== action.index) return b;
-        const merged = { ...b, ...action.patch };
-        merged.choices = normalizeChoices(merged.choices, merged.levelUps);
-        // keep the avoid list enforced whatever changed (id, level, choices or the list itself)
-        if (merged.avoid?.length) merged.choices = applyAvoid(merged.id, merged.levelUps, merged.choices, merged.avoid).choices;
-        return merged;
-      });
+      const next = brutes.map((b, i) => (i === action.index ? patchBrute(b, action.patch) : b));
       return { ...state, spec: { ...state.spec, brutes: next } };
     }
     case "resetBrute": {
@@ -68,11 +70,11 @@ export function labReducer(state: LabState, action: LabAction): LabState {
     }
     case "setFight":
       return { ...state, spec: { ...state.spec, ...action.patch } };
-    case "setSupport": {
+    case "setTeam": {
       const key = action.team === 0 ? "p0" : "p1";
-      const prop = state.spec[key] as TeamProps | null;
-      if (!prop || !prop._st) return state;
-      return { ...state, spec: { ...state.spec, [key]: { ...prop, _st: { ...(prop._st as object), ...action.patch } } } };
+      // the same shape the engine starts every team with
+      const prop = (state.spec[key] as TeamProps | null) ?? { _poi: null, _sab: null, _st: null };
+      return { ...state, spec: { ...state.spec, [key]: { ...prop, ...action.patch } } };
     }
   }
 }

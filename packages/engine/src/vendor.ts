@@ -1,6 +1,6 @@
 // Typed views of the original modules. Types describe what the original code returns;
 // they were established by reading vendor/*.js, not invented.
-import { GladAPI as G } from "./generated/glad.js";
+import { GladAPI as G, Gladiator as GL } from "./generated/glad.js";
 import { FightAPI as F } from "./generated/fight.js";
 import { LaBrute as L } from "./generated/labrute.js";
 import { FightLog as FL } from "./generated/fightlog.js";
@@ -52,6 +52,8 @@ export interface LabruteSession {
 }
 
 export const GladAPI = G as { describe(id: number, levelUps: number, choices: number[]): Description };
+/** A freshly built brute, read only for what Gladiator.initDestiny decided (bonusWeight is in Data.BONUS_WEIGHTS order). */
+export const Gladiator = GL as new (id: number, name: string) => { stanceId: number | null | undefined; bonusWeight: { w: number }[] };
 export const FightAPI = F as { run(input: EngineInput): EngineResult };
 export const LaBrute = L as {
   decode(data: string, key: string): { plain: string; ok: boolean };

@@ -9,6 +9,7 @@ import * as classic from "./classic";
 import type { Db } from "./db";
 import { HttpError } from "./errors";
 import * as lab from "./lab";
+import * as tournaments from "./tournaments";
 
 export interface AppOptions { db: Db; webDist?: string | null; logger?: boolean }
 
@@ -44,6 +45,10 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireUser(req).id));
   app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireUser(req).id, req.body); });
   app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireUser(req).id, req.params.id));
+  app.get("/api/tournaments", async (req) => tournaments.listTournaments(db, requireUser(req).id));
+  app.post("/api/tournaments", { bodyLimit: 512 * 1024 }, async (req, reply) => { reply.code(201); return tournaments.saveTournament(db, requireUser(req).id, req.body); });
+  app.post<P>("/api/tournaments/:id", { bodyLimit: 512 * 1024 }, async (req) => tournaments.saveTournament(db, requireUser(req).id, req.body, req.params.id));
+  app.delete<P>("/api/tournaments/:id", async (req) => tournaments.deleteTournament(db, requireUser(req).id, req.params.id));
 
   adminRoutes(app, db);
 

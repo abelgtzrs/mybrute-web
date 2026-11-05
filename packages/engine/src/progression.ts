@@ -7,10 +7,12 @@
 //  - Packed bits: byte i >> 3, bit i & 7, least significant bit first (Gladiator.setLevels).
 //  - Choosing option 1 also perturbs the brute's RNG (mt_Rand.addSeed), so it changes every LATER option.
 //    Options offered at level-up i depend only on choices 0..i-1.
-import { GladAPI, LaBrute, type Description, type LevelOption } from "./vendor";
+import { GladAPI, Gladiator, LaBrute, type Description, type LevelOption } from "./vendor";
+import { BONUSES } from "./generated/bonuses.js";
 
 export type Choice = 0 | 1;
 
+export const MAX_LAB_LEVEL = 5000;
 export const MIN_SEED_ID = 1;
 /** Payload integers go through the Haxe serializer as Flash signed 32-bit ints. */
 export const MAX_SEED_ID = 2 ** 31 - 1;
@@ -29,6 +31,25 @@ export function normalizeChoices(choices: readonly number[], n: number): Choice[
 
 export function describe(id: number, levelUps: number, choices: readonly number[]): Description {
   return GladAPI.describe(id, levelUps, normalizeChoices(choices, levelUps));
+}
+
+/**
+ * What the seed decided before any level-up (Gladiator.initDestiny): the rare idle stance (null for almost every brute,
+ * else 0 or 1) and the rewards whose weight it set to 0, which the brute can never be offered.
+ */
+export function destiny(id: number): { stance: number | null; banned: (typeof BONUSES)[number][] } {
+  const g = new Gladiator(id, "x");
+  return { stance: g.stanceId ?? null, banned: BONUSES.filter((_, i) => g.bonusWeight[i].w === 0) };
+}
+
+/** The valid id closest to `from` (ties go up) whose destiny has `stance`, skipping `taken`; null if none within `range`. */
+export function nearestIdWithStance(from: number, stance: number | null, taken: readonly number[] = [], range = 1_000_000): number | null {
+  for (let d = 0; d <= range; d++) {
+    for (const id of d ? [from + d, from - d] : [from]) {
+      if (isValidSeedId(id) && !taken.includes(id) && destiny(id).stance === stance) return id;
+    }
+  }
+  return null;
 }
 
 /** The two authentic options for the NEXT level-up of a brute that has taken `levelUps` level-ups. */

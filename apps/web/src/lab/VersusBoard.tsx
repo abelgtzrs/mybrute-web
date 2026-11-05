@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { displayLevel, levelUpsFor, newLabBrute, supportOf, type Description, type FightSpec, type SpecBrute } from "@mybrute/engine";
+import { bitsToHex, displayLevel, levelUpsFor, MAX_LAB_LEVEL, newLabBrute, supportOf, type Description, type FightSpec, type SpecBrute } from "@mybrute/engine";
 import { Portrait } from "../swf/Portrait";
-import { CommitInput, parseIntStrict } from "../ui/CommitInput";
+import { parseIntStrict } from "../ui/CommitInput";
 import type { LabAction } from "./state";
 
 interface Props {
@@ -10,10 +10,13 @@ interface Props {
   selected: number | null;
   problems: Set<number>;
   dispatch: (a: LabAction) => void;
+  /** the team whose support brute is open in the editor */
+  editingSupport: 0 | 1 | null;
+  onEditSupport: (team: 0 | 1) => void;
 }
 
 /** The two teams facing each other. Team 1 portraits are mirrored, as client.swf shows them. */
-export function VersusBoard({ spec, descs, selected, problems, dispatch }: Props) {
+export function VersusBoard({ spec, descs, selected, problems, dispatch, editingSupport, onEditSupport }: Props) {
   return (
     <section className="versus" aria-label="Teams">
       {([0, 1] as const).map((team) => (
@@ -26,7 +29,7 @@ export function VersusBoard({ spec, descs, selected, problems, dispatch }: Props
               </li>
             ))}
           </ul>
-          <SupportTile spec={spec} team={team} dispatch={dispatch} />
+          <TeamExtras spec={spec} team={team} dispatch={dispatch} editing={editingSupport === team} onEdit={() => onEditSupport(team)} />
           <AddBrute team={team} takenIds={spec.brutes.map((b) => b.id)} onAdd={(brute) => dispatch({ type: "addBrute", brute })} />
         </div>
       ))}
@@ -53,22 +56,33 @@ function BruteTile({ brute, desc, selected, problem, onSelect }: { brute: SpecBr
   );
 }
 
-function SupportTile({ spec, team, dispatch }: { spec: FightSpec; team: 0 | 1; dispatch: (a: LabAction) => void }) {
+/** Team props the original engine reads: a support brute, sabotage (from a saboteur) and poison (from a chef). */
+function TeamExtras({ spec, team, dispatch, editing, onEdit }: { spec: FightSpec; team: 0 | 1; dispatch: (a: LabAction) => void; editing: boolean; onEdit: () => void }) {
+  const prop = team === 0 ? spec.p0 : spec.p1;
   const s = supportOf(spec, team);
-  if (!s) return null;
-  const set = (patch: Record<string, unknown>) => dispatch({ type: "setSupport", team, patch });
+  const setTeam = (patch: Record<string, unknown>) => dispatch({ type: "setTeam", team, patch });
+  const addSupport = () => {
+    const taken = [...spec.brutes.map((b) => b.id), ...([0, 1] as const).map((t) => supportOf(spec, t)?.id ?? 0)];
+    const b = newLabBrute(team, { takenIds: taken });
+    setTeam({ _st: { _s: b.id, _lvl: b.levelUps, _bits: bitsToHex(b.choices, b.levelUps), _gfx: b.gfx } });
+  };
+  const on = [s && "support", prop?._sab && "sabotaged", prop?._poi && "poisoned"].filter(Boolean).join(", ");
   return (
-    <details className="support">
-      <summary>
-        <Portrait gfx={s.gfx} name="Support brute" flip={team === 1} className="support-portrait" />
-        <span>Support brute <span className="muted">#{s.id}, level {displayLevel(s.levelUps)}</span></span>
-      </summary>
-      <div className="form-grid">
-        <label>Id <CommitInput value={s.id} inputMode="numeric" onCommit={(t) => { const v = parseIntStrict(t); if (v === null || v < 1) return "Enter a positive whole number."; set({ _s: v }); }} /></label>
-        <label>Level <CommitInput value={displayLevel(s.levelUps)} inputMode="numeric" onCommit={(t) => { const v = parseIntStrict(t); if (v === null || v < 1 || v > 500) return "Level is 1 to 500."; set({ _lvl: levelUpsFor(v) }); }} /></label>
-        <label className="wide">Bits (hex) <CommitInput value={s.bits} spellCheck={false} onCommit={(t) => { if (t && !/^([0-9a-fA-F]{2})+$/.test(t)) return "Use pairs of hex digits."; set({ _bits: t.toLowerCase() }); }} /></label>
-        <label className="wide">Appearance <CommitInput value={s.gfx} spellCheck={false} onCommit={(t) => set({ _gfx: t.replace(/\s+/g, "") })} /></label>
-      </div>
+    <details className="extras">
+      <summary>Team extras <span className="muted">{on || "none"}</span></summary>
+      <label className="check"><input type="checkbox" checked={!!prop?._sab} onChange={(e) => setTeam({ _sab: e.target.checked || null })} /> Saboteur</label>
+      <p className="hint">The other side has a saboteur: each brute on this team gets one weapon that breaks.</p>
+      <label className="check"><input type="checkbox" checked={!!prop?._poi} onChange={(e) => setTeam({ _poi: e.target.checked || null })} /> Chef</label>
+      <p className="hint">This team is poisoned and loses 1/50 of its life every turn until Medicine cures it.</p>
+      <label className="check"><input type="checkbox" checked={!!s} onChange={(e) => (e.target.checked ? addSupport() : setTeam({ _st: null }))} /> Support brute</label>
+      <p className="hint">Joins once a teammate is hurt (the lower their life, the likelier) and leaves after a while.</p>
+      {s && (
+        <div className={"support" + (editing ? " editing" : "")}>
+          <Portrait gfx={s.gfx} name="Support brute" flip={team === 1} className="support-portrait" />
+          <span>#{s.id}, level {displayLevel(s.levelUps)}</span>
+          <button type="button" className="btn small" aria-pressed={editing} onClick={onEdit}>Edit</button>
+        </div>
+      )}
     </details>
   );
 }
@@ -84,7 +98,7 @@ function AddBrute({ team, takenIds, onAdd }: { team: 0 | 1; takenIds: number[]; 
   if (!open) return <button type="button" className="add-brute" onClick={() => setOpen(true)}>Add a brute to team {team}</button>;
   const submit = () => {
     const lvl = parseIntStrict(level), idv = id ? parseIntStrict(id) : undefined;
-    if (lvl === null || lvl < 1 || lvl > 500) return setError("Level is 1 to 500.");
+    if (lvl === null || lvl < 1 || lvl > MAX_LAB_LEVEL) return setError(`Level is 1 to ${MAX_LAB_LEVEL}.`);
     if (idv === null || (idv !== undefined && (idv < 1 || idv > 2147483647))) return setError("Id is a whole number from 1 to 2147483647.");
     if (idv !== undefined && takenIds.includes(idv)) return setError(`Id ${idv} is already in this fight.`);
     onAdd(newLabBrute(team, { levelUps: levelUpsFor(lvl), id: idv, name: name.trim() || undefined, takenIds, randomBits }));

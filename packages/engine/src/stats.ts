@@ -166,3 +166,45 @@ export function extractStats(result: EngineResult): Map<number, FighterStats> {
   }
   return final;
 }
+
+export interface PetStats {
+  id: number;
+  /** follower id, e.g. "DOG_0" */
+  kind: string;
+  /** the team it joined with, and the team it ended on (hypnosis switches sides) */
+  team: 0 | 1;
+  finalTeam: 0 | 1;
+  attacks: number;
+  hits: number;
+  damageDealt: number;
+  damageReceived: number;
+  died: boolean;
+}
+
+/** Stats for every pet in the fight, in the order they joined. */
+export function extractPetStats(result: EngineResult): PetStats[] {
+  const pets = new Map<number, PetStats>();
+  for (const { a: kind, p } of result.history) {
+    switch (kind) {
+      case "AddFollower": {
+        const team = p[1] === 1 ? 1 : 0;
+        pets.set(p[0], { id: p[0], kind: enumName(p[2]), team, finalTeam: team, attacks: 0, hits: 0, damageDealt: 0, damageReceived: 0, died: false });
+        break;
+      }
+      case "Attack": case "ThrowAttack": case "Grab": {
+        const [aid, tid, d] = p;
+        const a = pets.get(aid), t = pets.get(tid);
+        if (a && kind === "Attack") { a.attacks++; if (d > 0) a.hits++; }
+        if (d > 0) { if (a) a.damageDealt += d; if (t) t.damageReceived += d; }
+        break;
+      }
+      case "Hypno": {
+        const side = pets.get(p[0])?.finalTeam ?? result.history.find((e) => e.a === "AddFighter" && e.p[0] === p[0])?.p[1];
+        if (side !== undefined) for (const id of p[1] as number[]) { const pet = pets.get(id); if (pet) pet.finalTeam = side === 1 ? 1 : 0; }
+        break;
+      }
+      case "Death": { const pet = pets.get(p[0]); if (pet) pet.died = true; break; }
+    }
+  }
+  return [...pets.values()];
+}

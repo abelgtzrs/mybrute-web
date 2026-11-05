@@ -8,7 +8,7 @@ const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("
 
 describe("vendored original files", () => {
   const expected: Record<string, string> = {
-    "glad.js": "73cacfe1b7a81a1b1b9bf59b2becc3ae63fbbfcf8d0f1f6f1de42180ccff1573",
+    "glad.js": "c2b71c4d1b293255847b03658dd5945aa3583d055e388bd29797eb14fe441826", // + documented one-line patch
     "fight.js": "cc27c5888345489f5894bdfa7248b4f422a3e4fa5a572b253799b3c959ca4875", // + documented one-line patch
     "labrute.js": "f74f34a01be81dd01e5e753c9f5471bea1d82a6e97f0fc82d0028d84cf5dc102",
     "fightlog.js": "90caf9ba90f5d082620d45d1599ba2d79cefd938d25c12161bd349c5d7136e1b",
@@ -30,5 +30,14 @@ describe("vendored original files", () => {
     const diff = orig.map((l, i) => (l === patched[i] ? -1 : i)).filter((i) => i >= 0);
     expect(diff).toEqual([1266]);
     expect(orig[1266]).toBe("\treturn { win : arena1, history : result};");
+  });
+
+  it("glad.js differs from the original only by exporting Gladiator", () => {
+    const orig = readFileSync(join(root, "../../legacy/glad.js"), "utf8").split("\n");
+    const patched = readFileSync(join(root, "vendor/glad.js"), "utf8").split("\n");
+    expect(patched.length).toBe(orig.length);
+    const diff = orig.map((l, i) => (l === patched[i] ? -1 : i)).filter((i) => i >= 0);
+    expect(diff).toEqual([275]);
+    expect(orig[275]).toBe("var Gladiator = function(seed_id,name,fol) {");
   });
 });

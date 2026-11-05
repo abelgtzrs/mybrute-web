@@ -13,7 +13,10 @@ import { HistoryPage } from "./classic/History";
 import { LevelUpPage } from "./classic/LevelUp";
 import { MyBrutesPage } from "./classic/MyBrutes";
 import { OpponentsPage } from "./classic/Opponents";
+import { GuidePage } from "./guide/GuidePage";
 import { LabPage } from "./lab/LabPage";
+import { TournamentsPage } from "./tournaments/TournamentsPage";
+import { LanguagePicker } from "./ui/language";
 
 export function App() {
   const { user, logout } = useAuth();
@@ -25,7 +28,10 @@ export function App() {
         <nav aria-label="Main">
           <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span></NavLink>
           <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>
+          <NavLink to="/tournaments"><span className="nav-long">Tournaments</span><span className="nav-short">Tourneys</span></NavLink>
+          <NavLink to="/guide">Guide</NavLink>
           {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
+          <LanguagePicker />
           {user ? (
             <span className="account">
               <span className="muted">{user.username}</span>
@@ -40,6 +46,9 @@ export function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/lab" element={<LabPage />} />
+          <Route path="/tournaments" element={<TournamentsPage />} />
+          <Route path="/guide" element={<GuidePage />} />
+          <Route path="/guide/:page" element={<GuidePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/brutes" element={<RequireAuth><MyBrutesPage /></RequireAuth>} />

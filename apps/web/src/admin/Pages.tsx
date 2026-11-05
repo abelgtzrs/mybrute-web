@@ -49,12 +49,12 @@ export function AdminFights() {
 
 export function AdminSettings() {
   const { data, error, setData } = useApi(() => admin.settings(), []);
-  const [form, setForm] = useState({ maxBrutesDefault: "", dailyFights: "" });
+  const [form, setForm] = useState({ maxBrutesDefault: "", dailyFights: "", maxImportLevel: "" });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [flash, setFlash] = useFlash();
   useEffect(() => {
-    if (data) setForm({ maxBrutesDefault: String(data.settings.maxBrutesDefault), dailyFights: String(data.settings.dailyFights) });
+    if (data) setForm({ maxBrutesDefault: String(data.settings.maxBrutesDefault), dailyFights: String(data.settings.dailyFights), maxImportLevel: String(data.settings.maxImportLevel) });
   }, [data]);
   if (error) return <p className="page-status error" role="alert">{error.message}</p>;
   if (!data) return <p className="page-status">Loading…</p>;
@@ -62,12 +62,13 @@ export function AdminSettings() {
   const parse = (v: string, max: number) => { const n = Number(v); return v.trim() !== "" && Number.isInteger(n) && n >= 0 && n <= max ? n : null; };
   const brutes = parse(form.maxBrutesDefault, data.limits.maxBrutes);
   const fights = parse(form.dailyFights, data.limits.dailyFights);
-  const changed = brutes !== data.settings.maxBrutesDefault || fights !== data.settings.dailyFights;
+  const imports = parse(form.maxImportLevel, data.limits.importLevel);
+  const changed = brutes !== data.settings.maxBrutesDefault || fights !== data.settings.dailyFights || imports !== data.settings.maxImportLevel;
   const save = async () => {
-    if (brutes === null || fights === null) return;
+    if (brutes === null || fights === null || imports === null) return;
     setSaving(true); setSaveError(null);
     try {
-      const r = await admin.saveSettings({ maxBrutesDefault: brutes, dailyFights: fights });
+      const r = await admin.saveSettings({ maxBrutesDefault: brutes, dailyFights: fights, maxImportLevel: imports });
       setData({ ...data, settings: r.settings });
       setFlash("Settings saved. They apply from the next request.");
     } catch (e) { setSaveError((e as Error).message); }
@@ -90,9 +91,15 @@ export function AdminSettings() {
           <span className="hint">Applies straight away, including to fights already used today. Days reset at midnight, Bordeaux time.</span>
           {fights === null && <span className="field-error">A whole number from 0 to {data.limits.dailyFights}.</span>}
         </label>
+        <label>
+          <span className="admin-field-name">Highest level for Lab imports</span>
+          <input type="number" min={0} max={data.limits.importLevel} step={1} value={form.maxImportLevel} onChange={(e) => setForm({ ...form, maxImportLevel: e.target.value })} />
+          <span className="hint">Players can create a Classic brute from a saved Lab brute at up to this level. 1 means imports start at level 1 like any new brute.</span>
+          {imports === null && <span className="field-error">A whole number from 0 to {data.limits.importLevel}.</span>}
+        </label>
         {saveError && <p className="field-error" role="alert">{saveError}</p>}
         <div className="row">
-          <button type="submit" className="btn play" disabled={saving || !changed || brutes === null || fights === null}>Save rules</button>
+          <button type="submit" className="btn play" disabled={saving || !changed || brutes === null || fights === null || imports === null}>Save rules</button>
           {flash}
         </div>
       </form>

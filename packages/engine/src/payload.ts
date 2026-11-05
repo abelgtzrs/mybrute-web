@@ -4,7 +4,7 @@
 //   { _mini, _seed, _p0, _p1, _glads: [{ _bits, _n, _s, _t, _gfx, _lvl }], _arena, _end }
 // This module only builds/reads that structure with the original codec (labrute.js).
 import { FightAPI, LaBrute, type EngineInput, type EngineResult, type HxNode } from "./vendor";
-import { bitsToHex, hexToChoices, isValidSeedId, normalizeChoices, type Choice } from "./progression";
+import { bitsToHex, hexToChoices, isValidSeedId, MAX_LAB_LEVEL, normalizeChoices, type Choice } from "./progression";
 import { isValidGfx } from "./gfx";
 
 export interface SpecBrute {
@@ -167,7 +167,7 @@ export function validateSpec(spec: FightSpec): string[] {
   spec.brutes.forEach((b) => {
     const who = b.name || `Brute ${b.id}`;
     claim(b.id, who);
-    if (!Number.isInteger(b.levelUps) || b.levelUps < 0 || b.levelUps > 499) errors.push(`${who}: level must be between 1 and 500.`);
+    if (!Number.isInteger(b.levelUps) || b.levelUps < 0 || b.levelUps >= MAX_LAB_LEVEL) errors.push(`${who}: level must be between 1 and ${MAX_LAB_LEVEL}.`);
     if (!isValidGfx(b.gfx)) errors.push(`${who}: appearance needs 16 numbers separated by semicolons.`);
     if (b.choices.length < b.levelUps) errors.push(`${who}: missing level-up choices.`);
   });
