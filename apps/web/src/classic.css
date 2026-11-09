@@ -158,15 +158,47 @@
   .cell-card-info { flex: none; overflow: visible; }
 }
 
-/* opponent selection */
-.opponent-grid { list-style: none; margin: 0; padding: 4px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; }
-.opponent { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 12px; align-content: start; padding: 12px; }
-.opponent-portrait { width: 74px; height: 104px; aspect-ratio: auto; }
-.opponent-text { align-self: center; }
-.opponent-name { font: 22px/1.1 var(--font-display); margin: 0; }
-.opponent .stat-row, .opponent .kit, .opponent .btn { grid-column: 1 / -1; }
-.opponent .kit div { grid-template-columns: 60px 1fr; }
-.opponent .btn.play { font-size: 17px; }
+/* opponent selection: always 4 columns x 2 rows. Each card: left = portrait, name and stats / the kit / Fight;
+   right = the inventory. A card is as tall as its inventory, so nothing inside is cut off or left empty.
+   Sizes come from the card's own width (cqi), so the layout keeps its proportions at any screen size. */
+.opponent-grid { list-style: none; margin: 0; padding: 4px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; }
+.opponent-grid > li { container-type: inline-size; }
+/* the card's own spacing is in px: cq units on the card itself would measure the page, not the card */
+.opponent.panel { padding: 8px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+
+/* contain: size = the left side never sets the card height; it fills the inventory's height and a long kit scrolls */
+.opponent-left { contain: size; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 2.4cqi; min-width: 0; min-height: 0; padding-right: 8px; border-right: 2px solid var(--paper-edge); font-size: clamp(8px, 3.1cqi, 16px); }
+.opponent-box { border: 1.5px solid var(--paper-edge); border-radius: 0.7em; background: var(--paper-hi); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5); min-width: 0; }
+
+.opponent-head { display: grid; grid-template-columns: 32% minmax(0, 1fr); gap: 0.5em; padding: 0.5em; }
+.opponent-portrait-box { border: 1.5px solid var(--paper-edge); border-radius: 0.6em; display: grid; place-items: center; overflow: hidden; }
+.opponent-portrait { width: 100%; height: auto; aspect-ratio: 74 / 104; }
+.opponent-id { min-width: 0; display: grid; align-content: start; gap: 0.25em; }
+/* 9-10 digit ids fit on one line at this size (".opponent" outranks the shared ".panel h2" rule) */
+.opponent .opponent-name { font: 1.5em/1.05 var(--font-display); margin: 0; padding-bottom: 0.12em; border-bottom: 1.5px solid var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opponent-level { font-size: 0.95em; color: var(--ink); line-height: 1.1; }
+.opponent-stats { margin: 0; display: grid; gap: 0.2em; }
+.opponent-stats div { display: flex; align-items: center; justify-content: space-between; gap: 0.3em; padding: 0.1em 0.5em; border-radius: 999px; background: var(--paper-lo); }
+.opponent-stats dt { display: flex; align-items: center; gap: 0.35em; font-weight: 800; color: var(--ink-2); white-space: nowrap; min-width: 0; }
+.opponent-stats svg { width: 1.15em; height: 1.15em; flex: none; color: var(--ink); }
+.opponent-stats dd { margin: 0; font: 1.15em/1.1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* kit: dark arrow tabs for the category, rounded pills for each item; it takes the left side's spare height and scrolls when long */
+.opponent-kit { padding: 0.45em; overflow-y: auto; overscroll-behavior: contain; font-size: 0.9em; }
+.opponent-kit .kit { gap: 0.3em; }
+.opponent-kit .kit div { grid-template-columns: 5.4em minmax(0, 1fr); align-items: start; gap: 0.4em; }
+.opponent-kit .kit dt { font-size: 1em; line-height: 1.2; color: var(--paper-hi); background: var(--leather); padding: 0.25em 1em 0.25em 0.6em; border-radius: 0.35em 0 0 0.35em; clip-path: polygon(0 0, calc(100% - 0.55em) 0, 100% 50%, calc(100% - 0.55em) 100%, 0 100%); white-space: nowrap; }
+.opponent-kit .kit dd { gap: 0.25em; }
+.opponent-kit .chip { font-size: 1em; line-height: 1.2; padding: 0.2em 0.7em; border-radius: 999px; white-space: nowrap; }
+.opponent-kit > .muted { margin: 0; }
+
+.opponent-fight.btn.play { width: 100%; min-height: 0; padding: 0.35em 0.4em; font-size: 1.35em; border-radius: 0.35em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.opponent-inv { min-width: 0; padding: 1.2cqi; align-self: start; }
+/* inventory.swf is a 330x600 stage whose art fills the top 505px: the box shows exactly that part.
+   (also undoes the Lab's phone layout, which stacks .editor-inventory under its editor) */
+.opponent .editor-inventory { contain: none; display: block; height: auto; aspect-ratio: 330 / 505; overflow: hidden; border: 0; padding: 0; }
+.opponent .editor-inventory .inventory-swf { display: block; width: 100%; height: auto; aspect-ratio: 330 / 600; }
 
 /* the fight */
 .fight-layout { min-height: 0; display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); }

@@ -23,7 +23,7 @@ export class Player {
   cookie = "";
   constructor(private app: FastifyInstance, public username: string) {}
 
-  async call(method: "GET" | "POST" | "DELETE", url: string, body?: unknown, opts: { csrf?: boolean } = {}) {
+  async call(method: "GET" | "POST" | "PUT" | "DELETE", url: string, body?: unknown, opts: { csrf?: boolean } = {}) {
     const res = await this.app.inject({
       method, url, payload: body as object | undefined,
       headers: { ...(opts.csrf === false ? {} : { "x-mybrute": "1" }), ...(this.cookie ? { cookie: this.cookie } : {}) },

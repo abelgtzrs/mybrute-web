@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { hexToChoices } from "@mybrute/engine";
 import { api, type Cell } from "../api";
@@ -7,6 +7,7 @@ import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
 import { InventoryPanel } from "../ui/InventoryPanel";
 import { BruteSizeControl, portraitScale, useBruteSize } from "../ui/BruteSize";
+import { GfxEditor } from "../ui/GfxEditor";
 import { useApi } from "../useApi";
 import { useNames } from "../ui/language";
 import { FightRow, ResultBadge } from "./FightRow";
@@ -17,7 +18,7 @@ const PHONE = "(max-width: 699px)";
 
 export function CellPage() {
   const { id = "" } = useParams();
-  const { data, error } = useApi(() => api.cell(id), [id]);
+  const { data, error, reload } = useApi(() => api.cell(id), [id]);
   const { option, lang } = useNames();
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "brute" : "kit"));
   const [size] = useBruteSize();
@@ -54,6 +55,7 @@ export function CellPage() {
           <div className="cell-links">
             <Link to={`/brutes/${b.id}/history`}>Fight history</Link>
             <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>
+            <ChangeAppearance cell={data} onSaved={reload} />
             <DeleteBrute cell={data} />
           </div>
           <BruteSizeControl />
@@ -133,6 +135,41 @@ function LifetimeStats({ l }: { l: Record<string, number> }) {
       ))}
       <p className="hint">Bomb and downpour damage isn't included: the original fight log doesn't say whom they hit.</p>
     </div>
+  );
+}
+
+function ChangeAppearance({ cell, onSaved }: { cell: Cell; onSaved: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [gfx, setGfx] = useState(cell.brute.gfx);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try { await api.changeAppearance(cell.brute.id, gfx); ref.current?.close(); onSaved(); }
+    catch (err) { setError((err as Error).message); }
+    finally { setBusy(false); }
+  };
+  if (!cell.canChangeAppearance) return <span className="muted small">Appearance already changed once.</span>;
+  return (
+    <>
+      <button type="button" className="link" onClick={() => { setGfx(cell.brute.gfx); setError(null); ref.current?.showModal(); }}>Change appearance</button>
+      <dialog ref={ref} className="dialog" aria-labelledby="appearance-title">
+        <form method="dialog" className="dialog-body" onSubmit={save}>
+          <h2 id="appearance-title">Change {cell.brute.name}'s appearance</h2>
+          <p className="muted">{isAdmin ? "As an admin you can change this as often as you like." : "You can change the appearance once, so choose carefully."}</p>
+          <Portrait gfx={gfx} name={cell.brute.name} lazy={false} className="cell-portrait" />
+          <GfxEditor gfx={gfx} onChange={setGfx} />
+          {error && <p className="field-error" role="alert">{error}</p>}
+          <div className="row">
+            <button type="submit" className="btn play" disabled={busy || gfx === cell.brute.gfx}>Save appearance</button>
+            <button type="button" className="btn ghost" onClick={() => ref.current?.close()}>Cancel</button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }
 

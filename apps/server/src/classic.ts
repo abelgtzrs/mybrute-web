@@ -17,7 +17,7 @@ const HISTORY_PAGE = 20;
 
 interface BruteRow {
   id: string; owner_id: string; name: string; seed_id: number; gfx: string; level_ups: number; bits: string;
-  xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date;
+  xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date; appearance_changes: number;
 }
 
 export interface Settings { maxBrutesDefault: number; dailyFights: number; maxImportLevel: number }
@@ -65,15 +65,18 @@ async function ownedBrute(db: Db | Tx, userId: string, bruteId: string, lock = f
 
 // ---------------------------------------------------------------- brutes
 
-export async function listBrutes(db: Db, userId: string) {
+// admins may start a brute at any level (the game's maximum is 500); everyone else is capped by the import setting
+export const ADMIN_MAX_LEVEL = 500;
+
+export async function listBrutes(db: Db, userId: string, role: string = "player") {
   const s = await getSettings(db);
   const rows = (await db.query<BruteRow>("select * from brutes where owner_id = $1 order by created_at, id", [userId])).rows;
   const rec = await records(db, rows.map((r) => r.id));
   const limit = (await db.query<{ max_brutes: number | null }>("select max_brutes from users where id = $1", [userId])).rows[0]?.max_brutes ?? s.maxBrutesDefault;
-  return { brutes: rows.map((b) => ({ ...summary(b, s, rec.get(b.id) ?? emptyRecord), attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))) })), maxBrutes: limit, maxImportLevel: Math.max(1, s.maxImportLevel) };
+  return { brutes: rows.map((b) => ({ ...summary(b, s, rec.get(b.id) ?? emptyRecord), attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))) })), maxBrutes: limit, maxImportLevel: role === "admin" ? ADMIN_MAX_LEVEL : Math.max(1, s.maxImportLevel) };
 }
 
-export async function createBrute(db: Db, userId: string, body: unknown) {
+export async function createBrute(db: Db, userId: string, body: unknown, role: string = "player") {
   const b = (body ?? {}) as Record<string, unknown>;
   const nameProblem = bruteNameProblem(b.name);
   if (nameProblem) throw badRequest(nameProblem);
@@ -93,7 +96,7 @@ export async function createBrute(db: Db, userId: string, body: unknown) {
       const limit = user.max_brutes ?? settings.maxBrutesDefault;
       const count = Number((await tx.query<{ c: string }>("select count(*) c from brutes where owner_id = $1", [userId])).rows[0].c);
       if (count >= limit) throw conflict(`You already have ${count} of ${limit} brutes. Delete one to make room.`, "brute_limit");
-      const cap = Math.max(1, settings.maxImportLevel);
+      const cap = role === "admin" ? ADMIN_MAX_LEVEL : Math.max(1, settings.maxImportLevel);
       if (displayLevel(levelUps as number) > cap) throw badRequest(`Brutes can be imported up to level ${cap}.`);
       const row = (await tx.query<BruteRow>(
         "insert into brutes (owner_id, name, seed_id, gfx, level_ups, bits) values ($1, $2, $3, $4, $5, $6) returning *",
@@ -104,6 +107,20 @@ export async function createBrute(db: Db, userId: string, body: unknown) {
     if (isUniqueViolation(e, "brutes_name_unique")) throw conflict("Another brute already has that name.", "name_taken");
     throw e;
   }
+}
+
+// Players may change a brute's appearance once; admins may change it any time and their changes don't use up that one change.
+export async function changeAppearance(db: Db, userId: string, bruteId: string, body: unknown, role: string = "player") {
+  const req = (body ?? {}) as Record<string, unknown>;
+  if (!isValidGfx(req.gfx)) throw badRequest("The appearance needs 16 numbers separated by semicolons.");
+  return withTx(db, async (tx) => {
+    const b = await ownedBrute(tx, userId, bruteId, true);
+    const admin = role === "admin";
+    if (!admin && b.appearance_changes >= 1) throw conflict("You can change a brute's appearance only once.", "appearance_used");
+    await tx.query("update brutes set gfx = $2, appearance_changes = appearance_changes + $3 where id = $1",
+      [b.id, req.gfx, admin ? 0 : 1]);
+    return { ok: true, gfx: req.gfx as string };
+  });
 }
 
 export async function deleteBrute(db: Db, userId: string, bruteId: string) {
@@ -137,7 +154,7 @@ async function lifetime(db: Db | Tx, bruteId: string) {
   return out;
 }
 
-export async function getCell(db: Db, userId: string, bruteId: string) {
+export async function getCell(db: Db, userId: string, bruteId: string, role: string = "player") {
   const b = await ownedBrute(db, userId, bruteId);
   const s = await getSettings(db);
   const choices = choicesOf(b);
@@ -149,6 +166,7 @@ export async function getCell(db: Db, userId: string, bruteId: string) {
     .map((l) => ({ index: l.idx, level: l.idx + 2, choice: l.choice, chosen: l.options[l.choice], other: l.options[1 - l.choice], at: l.created_at }));
   return {
     brute: summary(b, s, rec),
+    canChangeAppearance: role === "admin" || b.appearance_changes < 1,
     bits: b.bits,
     attributes: attributes(d), kit: kit(d), check: d.check,
     pendingOptions: b.pending_level_up ? pendingOptions(b.seed_id, b.level_ups, choices) : null,
@@ -166,8 +184,12 @@ const rand = (n: number) => randomInt(n);
 export async function newOpponents(db: Db, userId: string, bruteId: string) {
   return withTx(db, async (tx) => {
     const b = await ownedBrute(tx, userId, bruteId, true);
-    // unchosen offers from earlier visits are dropped; chosen ones stay because fights reference them
-    await tx.query("delete from opponent_offers where brute_id = $1 and consumed_at is null", [b.id]);
+    // unchosen offers older than the latest list are dropped; chosen ones stay because fights reference them.
+    // The latest list stays valid: two requests close together (a double-loaded page, a second tab) would otherwise
+    // delete the list the page is showing. A list's offers share created_at, since now() is fixed per transaction.
+    await tx.query(
+      `delete from opponent_offers where brute_id = $1 and consumed_at is null
+         and created_at < (select max(created_at) from opponent_offers where brute_id = $1 and consumed_at is null)`, [b.id]);
     const used = new Set([b.seed_id]);
     const offers = [];
     for (let i = 0; i < OPPONENTS_PER_VISIT; i++) {
@@ -181,7 +203,7 @@ export async function newOpponents(db: Db, userId: string, bruteId: string) {
         "insert into opponent_offers (brute_id, level_ups, seed_id, name, gfx, bits) values ($1, $2, $3, $4, $5, $6) returning id",
         [b.id, b.level_ups, seedId, String(seedId), gfx, bits])).rows[0];
       const d = describe(seedId, b.level_ups, choices);
-      offers.push({ offerId: row.id, name: String(seedId), seedId, level: displayLevel(b.level_ups), gfx, attributes: attributes(d), kit: kit(d) });
+      offers.push({ offerId: row.id, name: String(seedId), seedId, level: displayLevel(b.level_ups), levelUps: b.level_ups, choices, gfx, attributes: attributes(d), kit: kit(d) });
     }
     return { opponents: offers };
   });

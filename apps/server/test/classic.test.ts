@@ -44,11 +44,23 @@ describe("opponent selection", () => {
     expect([row.xp, row.fights_used]).toEqual([0, 0]);
   });
 
-  it("drops unchosen offers from earlier visits", async () => {
+  it("drops unchosen offers from earlier visits, but keeps the previous list valid", async () => {
     const { p, b } = await setup();
     const first = await opponents(p, b.id);
+    const second = await opponents(p, b.id);
     await opponents(p, b.id);
     expect((await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: first[0].offerId })).status).toBe(404);
+    // a page still showing the previous list (e.g. it asked twice at once) can fight from it
+    expect((await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: second[0].offerId })).status).toBe(200);
+  });
+
+  it("keeps both lists usable when two requests arrive at once", async () => {
+    const { p, b } = await setup();
+    const [a, c] = await Promise.all([opponents(p, b.id), opponents(p, b.id)]);
+    for (const list of [a, c]) {
+      const n = (await h.db.query("select count(*)::int n from opponent_offers where id = any($1) and consumed_at is null", [list.map((o: { offerId: string }) => o.offerId)])).rows[0].n;
+      expect(n).toBe(8);
+    }
   });
 });
 
@@ -214,3 +226,30 @@ describe("importing a Lab brute", () => {
 });
 
 void pendingOptions; void hexToChoices;
+
+describe("appearance", () => {
+  const newLook = "1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16";
+  it("lets a player change the appearance once, then refuses", async () => {
+    const { p, b } = await setup();
+    const first = await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: newLook });
+    expect(first.status).toBe(200);
+    expect((await bruteRow(b.id)).gfx).toBe(newLook);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.canChangeAppearance).toBe(false);
+    const second = await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "0;0;1;2;3;4;5;6;7;8;9;10;11;12;13;14" });
+    expect(second.status).toBe(409);
+    expect((await bruteRow(b.id)).gfx).toBe(newLook);
+  });
+
+  it("lets an admin change it again and again without using up the player's change", async () => {
+    const { p, b } = await setup();
+    await h.db.query("update users set role = 'admin' where username = 'alice'");
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: newLook })).status).toBe(200);
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "2;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16" })).status).toBe(200);
+    expect((await bruteRow(b.id)).appearance_changes).toBe(0);
+  });
+
+  it("refuses an appearance that is not valid", async () => {
+    const { p, b } = await setup();
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "nope" })).status).toBe(400);
+  });
+});

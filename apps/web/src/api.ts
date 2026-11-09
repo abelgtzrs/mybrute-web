@@ -14,7 +14,7 @@ const qs = (q: Record<string, string | number | undefined | null>) => {
   return s ? `?${s}` : "";
 };
 
-async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
+async function request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
@@ -47,11 +47,11 @@ export interface FightListItem {
 }
 export interface LevelUpRecord { index: number; level: number; choice: 0 | 1; chosen: LevelOption; other: LevelOption; at: string }
 export interface Cell {
-  brute: BruteSummary; bits: string; attributes: Attributes; kit: Kit; check: boolean;
+  brute: BruteSummary; canChangeAppearance: boolean; bits: string; attributes: Attributes; kit: Kit; check: boolean;
   pendingOptions: [LevelOption, LevelOption] | null; lifetime: Record<string, number>;
   recentFights: FightListItem[]; levelUps: LevelUpRecord[];
 }
-export interface Opponent { offerId: string; name: string; seedId: number; level: number; gfx: string; attributes: Attributes; kit: Kit }
+export interface Opponent { offerId: string; name: string; seedId: number; level: number; levelUps: number; choices: number[]; gfx: string; attributes: Attributes; kit: Kit }
 export interface FightDetail {
   id: string; createdAt: string; result: FightResult; events: number; xpAwarded: number; level: number;
   xpAfter: number; xpRequired: number; pendingAfter: boolean; spec: FightSpec;
@@ -69,6 +69,7 @@ export const api = {
   brutes: () => request<{ brutes: BruteSummary[]; maxBrutes: number; maxImportLevel: number }>("GET", "/api/brutes"),
   createBrute: (b: { name: string; seedId: number; gfx: string; levelUps?: number; choices?: number[] }) => request<{ brute: BruteSummary }>("POST", "/api/brutes", b),
   cell: (id: string) => request<Cell>("GET", `/api/brutes/${id}`),
+  changeAppearance: (id: string, gfx: string) => request<{ ok: true; gfx: string }>("PUT", `/api/brutes/${id}/appearance`, { gfx }),
   deleteBrute: (id: string) => request<{ ok: true }>("DELETE", `/api/brutes/${id}`),
   opponents: (id: string) => request<{ opponents: Opponent[] }>("POST", `/api/brutes/${id}/opponents`),
   fight: (id: string, offerId: string) => request<{ fightId: string; repeated: boolean }>("POST", `/api/brutes/${id}/fights`, { offerId }),
