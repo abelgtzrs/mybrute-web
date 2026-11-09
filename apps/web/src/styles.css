@@ -803,8 +803,8 @@ label.wide {
   color: var(--ink-3);
 }
 .tile-portrait {
-  width: 74px;
-  height: 104px;
+  width: calc(74px * var(--portrait-scale, 1));
+  height: calc(104px * var(--portrait-scale, 1));
   aspect-ratio: auto;
 }
 
@@ -1116,7 +1116,13 @@ label.wide {
   align-items: start;
 }
 .editor-portrait {
-  width: 96px;
+  width: calc(96px * var(--portrait-scale, 1));
+}
+/* brute size picker (S / M / L), shared by the cell, the lab teams and the lab editor */
+.brute-size { display: flex; gap: 6px; }
+.brute-size .btn.small[aria-pressed="true"] {
+  background: linear-gradient(var(--gold-hi), var(--gold));
+  color: var(--ink);
 }
 .editor-fields {
   display: grid;

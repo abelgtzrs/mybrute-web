@@ -37,10 +37,13 @@ import { initLab, labReducer, patchBrute } from "./state";
 import { useLabStore, type SavedBrute } from "./storage";
 import { useLanguage } from "../ui/language";
 import { VersusBoard } from "./VersusBoard";
+import { BruteSizeControl, portraitScale, useBruteSize } from "../ui/BruteSize";
 
 /** Params meant to leave the app (copy/save) use the same conventions as the original lab folder. */
 const portable = (spec: FightSpec) =>
   buildParams(spec, { mini: "mini_perso.swf", end: "javascript:()" });
+/** Arena ids offered in the Arena dropdown. */
+const ARENA_IDS = Array.from({ length: 10 }, (_, i) => i);
 const fightLabel = (spec: FightSpec) =>
   spec.brutes.map((b) => b.name).join(" vs ");
 
@@ -182,6 +185,7 @@ export function LabPage() {
     });
   const toastTimer = useRef<number>();
   const [theme, setTheme] = useState(readTheme);
+  const [size] = useBruteSize();
   const pickTheme = (t: Theme) => {
     setTheme(t);
     try {
@@ -408,6 +412,7 @@ export function LabPage() {
     <div
       className={theme === "workbench" ? "lab" : "lab term"}
       data-theme={theme}
+      style={portraitScale(size)}
     >
       <div className="toolbar" role="toolbar" aria-label="Fight">
         <div className="toolbar-title">
@@ -415,6 +420,7 @@ export function LabPage() {
           <span className="muted">{state.sourceLabel}</span>
         </div>
         <div className="toolbar-actions">
+          <BruteSizeControl />
           <button
             type="button"
             className="btn ghost"
@@ -477,16 +483,17 @@ export function LabPage() {
           </label>
           <label>
             Arena
-            <CommitInput
+            <select
               value={spec.arena}
-              inputMode="numeric"
-              className="short"
-              onCommit={(t) => {
-                const v = parseIntStrict(t);
-                if (v === null || v < 0) return "Use 0 or more.";
-                dispatch({ type: "setFight", patch: { arena: v } });
-              }}
-            />
+              onChange={(e) =>
+                dispatch({ type: "setFight", patch: { arena: Number(e.target.value) } })
+              }
+            >
+              {/* shortcut: arena ids 0-9 are a guess, the repo does not list them; a loaded id outside this range is kept in the list */}
+              {[...new Set([spec.arena, ...ARENA_IDS])].sort((a, b) => a - b).map((id) => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
           </label>
           <label>
             Language

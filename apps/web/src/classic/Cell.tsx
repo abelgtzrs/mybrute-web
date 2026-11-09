@@ -6,6 +6,7 @@ import { useAuth } from "../auth";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
 import { InventoryPanel } from "../ui/InventoryPanel";
+import { BruteSizeControl, portraitScale, useBruteSize } from "../ui/BruteSize";
 import { useApi } from "../useApi";
 import { useNames } from "../ui/language";
 import { FightRow, ResultBadge } from "./FightRow";
@@ -19,13 +20,14 @@ export function CellPage() {
   const { data, error } = useApi(() => api.cell(id), [id]);
   const { option, lang } = useNames();
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "brute" : "kit"));
+  const [size] = useBruteSize();
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data) return <div className="page"><p className="page-status">Loading the cell…</p></div>;
   const b = data.brute;
   const labBrute = { name: b.name, id: b.seedId, team: 0 as const, levelUps: b.levelUps, gfx: b.gfx, choices: hexToChoices(data.bits, b.levelUps) };
 
   return (
-    <div className="page cell">
+    <div className="page cell" style={portraitScale(size)}>
       <div className="cell-grid" data-panel={panel}>
         <section className="panel cell-identity" aria-label={`${b.name}`}>
           <Portrait gfx={b.gfx} name={b.name} lazy={false} className="cell-portrait" />
@@ -54,6 +56,7 @@ export function CellPage() {
             <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>
             <DeleteBrute cell={data} />
           </div>
+          <BruteSizeControl />
         </section>
 
         <div className="col cell-main">
