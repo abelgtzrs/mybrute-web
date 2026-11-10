@@ -27,8 +27,8 @@ export function App() {
         <Link to="/" className="wordmark">MyBrute<span>++</span></Link>
         <nav aria-label="Main">
           <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span></NavLink>
-          <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>
-          <NavLink to="/tournaments"><span className="nav-long">Tournaments</span><span className="nav-short">Tourneys</span></NavLink>
+          {user?.role === "admin" && <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>}
+          {user?.role === "admin" && <NavLink to="/tournaments"><span className="nav-long">Tournaments</span><span className="nav-short">Tourneys</span></NavLink>}
           <NavLink to="/guide">Guide</NavLink>
           {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
           <LanguagePicker />
@@ -45,8 +45,8 @@ export function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/lab" element={<LabPage />} />
-          <Route path="/tournaments" element={<TournamentsPage />} />
+          <Route path="/lab" element={<RequireAdmin><LabPage /></RequireAdmin>} />
+          <Route path="/tournaments" element={<RequireAdmin><TournamentsPage /></RequireAdmin>} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/guide/:page" element={<GuidePage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -87,7 +87,7 @@ function Home() {
       </p>
       <div className="row">
         <Link to={user ? "/brutes" : "/register"} className="btn play">{user ? "Go to my brutes" : "Create an account"}</Link>
-        <Link to="/lab" className="btn ghost light">Open the Laboratory</Link>
+        {user?.role === "admin" && <Link to="/lab" className="btn ghost light">Open the Laboratory</Link>}
       </div>
     </section>
   );

@@ -198,6 +198,8 @@ describe("lab saves", () => {
   it("keeps Lab saves per player and separate from Classic brutes", async () => {
     const { p } = await setup();
     const bob = await Player.register(h.app, "bob");
+    expect((await p.call("GET", "/api/lab/brutes")).status).toBe(403);
+    await h.db.query("update users set role = 'admin' where username in ('alice', 'bob')");
     const saved = await p.call("POST", "/api/lab/brutes", { label: "Copy", brute: { name: "Hero", id: 18327968, team: 0, levelUps: 3, gfx: "0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0", choices: [1, 0, 1], avoid: ["Weapons:AXE"] } });
     expect(saved.status).toBe(201);
     expect((await p.call("GET", "/api/lab/brutes")).body.items).toHaveLength(1);

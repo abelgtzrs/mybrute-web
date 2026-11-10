@@ -3,7 +3,7 @@ import { join } from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
-import { adminRoutes } from "./admin";
+import { adminRoutes, requireAdmin } from "./admin";
 import { authPlugin, requireUser } from "./auth";
 import * as classic from "./classic";
 import type { Db } from "./db";
@@ -44,16 +44,16 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   app.post<P>("/api/brutes/:id/level-up", async (req) => classic.levelUp(db, requireUser(req).id, req.params.id, req.body));
   app.get<P>("/api/fights/:id", async (req) => classic.getFight(db, requireUser(req).id, req.params.id));
 
-  app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireUser(req).id));
-  app.post("/api/lab/payloads", async (req, reply) => { reply.code(201); return lab.savePayload(db, requireUser(req).id, req.body); });
-  app.delete<P>("/api/lab/payloads/:id", async (req) => lab.deletePayload(db, requireUser(req).id, req.params.id));
-  app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireUser(req).id));
-  app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireUser(req).id, req.body); });
-  app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireUser(req).id, req.params.id));
-  app.get("/api/tournaments", async (req) => tournaments.listTournaments(db, requireUser(req).id));
-  app.post("/api/tournaments", { bodyLimit: 512 * 1024 }, async (req, reply) => { reply.code(201); return tournaments.saveTournament(db, requireUser(req).id, req.body); });
-  app.post<P>("/api/tournaments/:id", { bodyLimit: 512 * 1024 }, async (req) => tournaments.saveTournament(db, requireUser(req).id, req.body, req.params.id));
-  app.delete<P>("/api/tournaments/:id", async (req) => tournaments.deleteTournament(db, requireUser(req).id, req.params.id));
+  app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireAdmin(req).id));
+  app.post("/api/lab/payloads", async (req, reply) => { reply.code(201); return lab.savePayload(db, requireAdmin(req).id, req.body); });
+  app.delete<P>("/api/lab/payloads/:id", async (req) => lab.deletePayload(db, requireAdmin(req).id, req.params.id));
+  app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireAdmin(req).id));
+  app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireAdmin(req).id, req.body); });
+  app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireAdmin(req).id, req.params.id));
+  app.get("/api/tournaments", async (req) => tournaments.listTournaments(db, requireAdmin(req).id));
+  app.post("/api/tournaments", { bodyLimit: 512 * 1024 }, async (req, reply) => { reply.code(201); return tournaments.saveTournament(db, requireAdmin(req).id, req.body); });
+  app.post<P>("/api/tournaments/:id", { bodyLimit: 512 * 1024 }, async (req) => tournaments.saveTournament(db, requireAdmin(req).id, req.body, req.params.id));
+  app.delete<P>("/api/tournaments/:id", async (req) => tournaments.deleteTournament(db, requireAdmin(req).id, req.params.id));
 
   adminRoutes(app, db);
 
