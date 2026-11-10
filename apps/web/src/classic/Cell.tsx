@@ -22,6 +22,7 @@ export function CellPage() {
   const { option, lang } = useNames();
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "brute" : "kit"));
   const [size] = useBruteSize();
+  const { user } = useAuth();
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data) return <div className="page"><p className="page-status">Loading the cell…</p></div>;
   const b = data.brute;
@@ -54,7 +55,7 @@ export function CellPage() {
           </dl>
           <div className="cell-links">
             <Link to={`/brutes/${b.id}/history`}>Fight history</Link>
-            <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>
+            {user?.role === "admin" && <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>}
             <ChangeAppearance cell={data} onSaved={reload} />
             <DeleteBrute cell={data} />
           </div>

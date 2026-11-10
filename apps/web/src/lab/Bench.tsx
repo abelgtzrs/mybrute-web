@@ -3,7 +3,7 @@ import { bitsToHex, describe, destiny, displayLevel, type BonusKind, type SpecBr
 import { Portrait } from "../swf/Portrait";
 import { useNames } from "../ui/language";
 import type { SavedBrute } from "./storage";
-import { exportBrute, importBrute } from "./bruteCode";
+import { exportBrute, exportBrutes, importBrutes } from "./bruteCode";
 
 interface Props {
   items: SavedBrute[];
@@ -15,8 +15,8 @@ interface Props {
   onEdit: (item: SavedBrute) => void;
   editing: string | null;
   where: "account" | "browser";
-  /** saves a brute read from a pasted code to the bench */
-  onImport: (b: SpecBrute) => void;
+  /** saves brutes read from pasted codes to the bench */
+  onImport: (brutes: SpecBrute[]) => void;
   onNotify: (msg: string) => void;
 }
 
@@ -55,16 +55,16 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const doImport = () => {
-    try {
-      onImport(importBrute(code));
-      setCode("");
-      setCodeError("");
-    } catch (e) {
-      setCodeError((e as Error).message);
-    }
+    const { brutes, errors } = importBrutes(code);
+    if (brutes.length) onImport(brutes);
+    // keep the text when something failed, so it can be fixed and imported again
+    if (!errors.length) setCode("");
+    setCodeError(errors.join("\n"));
   };
-  const copyCode = (b: SpecBrute) =>
-    navigator.clipboard.writeText(exportBrute(b)).then(() => onNotify("Brute code copied."), () => onNotify("Couldn't reach the clipboard."));
+  const copy = (text: string, what: string) =>
+    navigator.clipboard.writeText(text).then(() => onNotify(`${what} copied.`), () => onNotify("Couldn't reach the clipboard."));
+  const copyCode = (b: SpecBrute) => copy(exportBrute(b), "Brute code");
+  const copyAll = () => copy(exportBrutes(items.map((s) => s.brute)), `${items.length} brute codes`);
   return (
     <>
     <button ref={btn} type="button" className="btn bench-open" aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => (isOpen ? close() : open())}>
@@ -74,6 +74,9 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
     <section className="bench dialog-body">
       <div className="row bench-head">
         <h2 id="bench-title">Bench</h2>
+        {items.length > 1 && (
+          <button type="button" className="btn small ghost" title="Copy every saved brute's code, one per line" onClick={copyAll}>Export all</button>
+        )}
         <button type="button" className="btn small ghost" onClick={close}>Close</button>
       </div>
       <p className="hint">{where === "account" ? "Saved to your account." : "Saved in this browser. Sign in to keep Lab saves in your account."}</p>
@@ -107,11 +110,11 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
       )}
       <div className="bench-import">
         <label>
-          Import a brute code
-          <textarea rows={2} value={code} placeholder="MYBRUTE1:..." onChange={(e) => setCode(e.target.value)} />
+          Import brute codes <span className="muted">(one or many, one per line)</span>
+          <textarea rows={3} value={code} placeholder={"MYBRUTE1:...\nMYBRUTE1:..."} onChange={(e) => setCode(e.target.value)} />
         </label>
         <button type="button" className="btn small" disabled={!code.trim()} onClick={doImport}>Import to bench</button>
-        {codeError && <p className="field-error" role="alert">{codeError}</p>}
+        {codeError && <p className="field-error" role="alert" style={{ whiteSpace: "pre-line" }}>{codeError}</p>}
       </div>
     </section>
     </dialog>

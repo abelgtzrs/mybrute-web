@@ -552,14 +552,16 @@ export function LabPage() {
             editing={draft?.kind === "bench" ? draft.item.key : null}
             where={store.where}
             onNotify={notify}
-            onImport={(b) => {
-              store.saveBrute(b.name, b).then(
-                () => {
-                  void reloadBench();
-                  notify(`Imported ${b.name} to the bench.`);
-                },
-                (e: Error) => notify(e.message),
-              );
+            onImport={async (brutes) => {
+              // one at a time, last first: the bench lists newest first, so it ends up in the pasted order
+              let saved = 0;
+              try {
+                for (const b of [...brutes].reverse()) { await store.saveBrute(b.name, b); saved++; }
+                notify(brutes.length === 1 ? `Imported ${brutes[0].name} to the bench.` : `Imported ${saved} brutes to the bench.`);
+              } catch (e) {
+                notify(`Imported ${saved} of ${brutes.length}: ${(e as Error).message}`);
+              }
+              void reloadBench();
             }}
             onDelete={(key) => {
               store

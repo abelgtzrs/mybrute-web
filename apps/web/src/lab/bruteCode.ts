@@ -62,3 +62,26 @@ export function importBrute(text: string, team: 0 | 1 = 0): SpecBrute {
     brute.avoid = a as string[];
   return brute;
 }
+
+/** Several brutes as text: one code per line. */
+export const exportBrutes = (brutes: SpecBrute[]) => brutes.map((b) => exportBrute(b)).join("\n");
+
+/**
+ * Reads any number of codes pasted together (one per line, space-separated, or even line-wrapped).
+ * Every code that reads fine is returned; each broken one gives an error naming its position.
+ */
+export function importBrutes(text: string, team: 0 | 1 = 0): { brutes: SpecBrute[]; errors: string[] } {
+  // codes are base64url after the prefix, so they never contain ":" or spaces: cutting at each prefix finds them
+  const [junk, ...codes] = text.replace(/\s+/g, "").split(PREFIX);
+  if (!codes.length) return { brutes: [], errors: [text.trim() ? "That isn't a brute code." : "Paste one or more brute codes."] };
+  const brutes: SpecBrute[] = [];
+  const errors: string[] = junk ? ["Text before the first code was ignored."] : [];
+  codes.forEach((c, n) => {
+    try {
+      brutes.push(importBrute(PREFIX + c, team));
+    } catch (e) {
+      errors.push(codes.length > 1 ? `Code ${n + 1}: ${(e as Error).message}` : (e as Error).message);
+    }
+  });
+  return { brutes, errors };
+}
