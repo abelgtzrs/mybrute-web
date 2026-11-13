@@ -49,6 +49,7 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
     ranked.listBruteTournaments(db, requireUser(req).id, req.params.id, Number(req.query.page) || 1));
   app.get<T>("/api/brutes/:id/tournaments/:tid", async (req) => ranked.getBruteTournament(db, requireUser(req).id, req.params.id, req.params.tid));
   app.post<T>("/api/brutes/:id/tournaments/:tid/open", async (req) => ranked.openRounds(db, requireUser(req).id, req.params.id, req.params.tid, req.body));
+  app.post<P>("/api/brutes/:id/time-capsule", async (req) => ranked.useTimeCapsule(db, requireUser(req).id, req.params.id, req.body));
   app.get<P>("/api/fights/:id", async (req) => classic.getFight(db, requireUser(req).id, req.params.id));
 
   app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireAdmin(req).id));

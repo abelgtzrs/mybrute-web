@@ -46,6 +46,11 @@ export function capFor(rank: number, adminBrute: boolean): number {
   return RANKS[rank].cap;
 }
 
+/** Time capsule: only a brute sitting exactly at its cap can rewind, to any level up to this one. Admin brutes (cap Infinity) never can. */
+export function capsuleMaxTarget(displayLevel: number, cap: number): number | null {
+  return displayLevel === cap ? cap - 5 : null;
+}
+
 /** Tournament bracket size: doubles with every title (16, 32, ...), but never above 256. */
 export function bracketSize(rankTitles: number): number {
   return Math.min(256, 16 * 2 ** rankTitles);

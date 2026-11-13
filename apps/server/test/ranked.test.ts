@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { bitsToHex, hexToChoices, type Choice } from "@mybrute/engine";
 import { harness, Player, reset, type Harness } from "./helpers";
 
 let h: Harness;
@@ -216,5 +217,59 @@ describe("training-only records", () => {
     expect(await adminFights()).toBe(before.admin + 4);
     const fight = (await p.call("GET", `/api/fights/${fightId}`)).body.fight;
     expect(fight.tournament).toMatchObject({ round: 1, totalRounds: 4 });
+  });
+});
+
+describe("time capsule", () => {
+  const capsule = (p: Player, id: string, level: number) => p.call("POST", `/api/brutes/${id}/time-capsule`, { level });
+  // a brute at its cap (level 20) with known choices and one level_ups row per choice
+  async function atCap(id: string) {
+    const choices = Array.from({ length: 19 }, (_, i) => (i % 3 === 0 ? 1 : 0)) as Choice[];
+    await h.db.query("update brutes set level_ups = 19, bits = $2 where id = $1", [id, bitsToHex(choices, 19)]);
+    for (let i = 0; i < 19; i++) {
+      await h.db.query("insert into level_ups (brute_id, idx, choice, options, xp_spent) values ($1, $2, $3, '[]', 2)", [id, i, choices[i]]);
+    }
+    return choices;
+  }
+
+  it("rewinds to the chosen level, keeps banked XP and the choices before it", async () => {
+    const { p, b } = await setup();
+    const choices = await atCap(b.id);
+    await h.db.query("update brutes set xp = 300, rank_titles = 2 where id = $1", [b.id]);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.capsule).toEqual({ maxTarget: 15 });
+
+    const r = await capsule(p, b.id, 5);
+    expect(r.status).toBe(200);
+    const row = await bruteRow(b.id);
+    expect([row.level_ups, row.xp, row.pending_level_up, row.rank, row.rank_titles]).toEqual([4, 300, true, 0, 2]);
+    expect(hexToChoices(row.bits, 4)).toEqual(choices.slice(0, 4));
+    expect(Number((await h.db.query("select count(*) c from level_ups where brute_id = $1 and idx >= 4", [b.id])).rows[0].c)).toBe(0);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.capsule).toBeNull();
+  });
+
+  it("refuses below the cap, above cap minus 5, and for admin brutes", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, 18); // level 19, one short of the cap
+    const early = await capsule(p, b.id, 5);
+    expect([early.status, early.body.error]).toEqual([409, "capsule_unavailable"]);
+
+    await raise(b.id, 19);
+    expect((await capsule(p, b.id, 16)).status).toBe(400);
+    expect((await capsule(p, b.id, 0)).status).toBe(400);
+
+    await h.db.query("update brutes set admin_brute = true where id = $1", [b.id]);
+    const admin = await capsule(p, b.id, 5);
+    expect([admin.status, admin.body.error]).toEqual([409, "capsule_unavailable"]);
+  });
+
+  it("an unopened tournament keeps its snapshot after a rewind", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, 19);
+    const t = (await enter(p, b.id)).body.tournament;
+    expect((await capsule(p, b.id, 5)).status).toBe(200);
+    await open(p, b.id, t.id, { all: true });
+    const fights = (await h.db.query("select spec from fights where tournament_id = $1", [t.id])).rows;
+    expect(fights.length).toBeGreaterThan(0);
+    for (const f of fights) expect(f.spec.brutes[0].levelUps).toBe(19);
   });
 });

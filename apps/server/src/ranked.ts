@@ -2,12 +2,12 @@
 // classic_tournaments; each round's fight is written to `fights` (and paid) only when the player opens it.
 // Because unopened results never reach `fights`, no other read path can leak them.
 import { randomInt } from "node:crypto";
-import { displayLevel } from "@mybrute/engine";
+import { bitsToHex, displayLevel, hexToChoices } from "@mybrute/engine";
 import { simulateBracket, type BracketRound, type Npc, type Snapshot } from "./bracket";
 import { ownedBrute, type BruteRow } from "./classic";
 import { isUniqueViolation, withTx, type Db, type Tx } from "./db";
-import { conflict, notFound } from "./errors";
-import { bracketSize, capFor, classicDay, isWaiting, RANKS, titleXp } from "./rules";
+import { badRequest, conflict, notFound } from "./errors";
+import { bracketSize, capFor, capsuleMaxTarget, classicDay, isWaiting, RANKS, titleXp } from "./rules";
 
 const LIST_PAGE = 20;
 const WIN_XP = 2;
@@ -175,4 +175,29 @@ export async function listBruteTournaments(db: Db, userId: string, bruteId: stri
     };
   });
   return { total: Number(r.rows[0]?.total ?? 0), page: p, pageSize: LIST_PAGE, items };
+}
+
+/**
+ * Time capsule: rewinds a brute that sits exactly at its cap to an earlier level. XP is kept (the bank), so the
+ * brute usually climbs straight back and picks a new branch. Rank, titles, fights and unopened tournaments
+ * (snapshotted at entry) are untouched.
+ */
+export async function useTimeCapsule(db: Db, userId: string, bruteId: string, body: unknown): Promise<{ ok: true; level: number }> {
+  const target = (body as Record<string, unknown> | null)?.level;
+  return withTx(db, async (tx) => {
+    const b = await ownedBrute(tx, userId, bruteId, true);
+    const cap = capFor(b.rank, b.admin_brute);
+    const max = capsuleMaxTarget(displayLevel(b.level_ups), cap);
+    if (max === null) throw conflict("The time capsule opens only when this brute is at its rank's level cap.", "capsule_unavailable");
+    if (!Number.isInteger(target) || (target as number) < 1 || (target as number) > max) throw badRequest(`Pick a level from 1 to ${max}.`);
+
+    const levelUps = (target as number) - 1; // the level-ups that stay
+    const choices = hexToChoices(b.bits, b.level_ups).slice(0, levelUps);
+    await tx.query("delete from level_ups where brute_id = $1 and idx >= $2", [b.id, levelUps]);
+    await tx.query("update brutes set level_ups = $2, bits = $3, pending_level_up = $4 where id = $1",
+      [b.id, levelUps, bitsToHex(choices, levelUps), isWaiting(b.xp, target as number, cap)]);
+    // opponents found at the old level no longer match
+    await tx.query("delete from opponent_offers where brute_id = $1 and consumed_at is null", [b.id]);
+    return { ok: true, level: target as number };
+  });
 }

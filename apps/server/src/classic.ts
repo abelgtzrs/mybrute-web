@@ -9,7 +9,7 @@ import {
 } from "@mybrute/engine";
 import { isUniqueViolation, withTx, type Db, type Tx } from "./db";
 import { badRequest, conflict, notFound } from "./errors";
-import { bruteNameProblem, classicDay, capFor, fightsUsedToday, isWaiting, rankInfo, requiredXp, xpFor, type FightResult } from "./rules";
+import { bruteNameProblem, capsuleMaxTarget, classicDay, capFor, fightsUsedToday, isWaiting, rankInfo, requiredXp, xpFor, type FightResult } from "./rules";
 
 const ARENA = 2; // the arena every historical payload uses
 const OPPONENTS_PER_VISIT = 8;
@@ -178,6 +178,8 @@ export async function getCell(db: Db, userId: string, bruteId: string, role: str
     lifetime: await lifetime(db, b.id),
     recentFights: recent,
     levelUps,
+    // set only when the brute is exactly at its cap; the app offers the rewind then
+    capsule: ((max) => (max === null ? null : { maxTarget: max }))(capsuleMaxTarget(displayLevel(b.level_ups), capFor(b.rank, b.admin_brute))),
   };
 }
 
