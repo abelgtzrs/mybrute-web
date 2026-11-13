@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, type Opponent } from "../api";
 import { Portrait } from "../swf/Portrait";
+import { AdminBruteLabel, RankIcon } from "./Rank";
 import { KitList } from "../ui/BruteKit";
 import { InventoryControls, InventoryPanel, useInventorySettings } from "../ui/InventoryPanel";
 import { useApi } from "../useApi";
@@ -47,7 +48,7 @@ export function OpponentsPage() {
       <header className="page-head">
         <div>
           <h1>Choose an opponent</h1>
-          {b && <span className="muted">{b.name}, level {b.level}. {b.fightsLeft} of {b.dailyFights} fights left today.</span>}
+          {b && <span className="muted"><RankIcon rank={b.rank} /> {b.name}{b.adminBrute && <> <AdminBruteLabel /></>}, level {b.level}. {b.fightsLeft} of {b.dailyFights} fights left today.</span>}
         </div>
         <div className="row">
           <InventoryControls {...inventory} />

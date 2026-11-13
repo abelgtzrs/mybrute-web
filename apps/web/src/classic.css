@@ -258,3 +258,11 @@
 .seg-btn { min-height: 34px; padding: 4px 12px; border-radius: 999px; border: 1.5px solid var(--paper-edge); background: var(--paper-hi); color: var(--ink-2); font-weight: 800; cursor: pointer; }
 .seg-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .pager { justify-content: center; margin-bottom: 0; }
+
+/* ranked tournaments: rank icon, rank panel on the cell, time capsule */
+.rank-icon { width: 20px; height: 20px; vertical-align: -4px; }
+.rank-panel { display: grid; justify-items: center; gap: 6px; width: 100%; margin: 6px 0; }
+.rank-panel p { margin: 0; }
+.rank-head { display: flex; align-items: center; gap: 6px; }
+.capsule { display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--line, #0002); padding-top: 8px; width: 100%; }
+.capsule h3 { margin: 0; }

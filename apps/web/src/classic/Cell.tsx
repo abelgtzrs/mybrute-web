@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { hexToChoices } from "@mybrute/engine";
-import { api, type Cell } from "../api";
+import { api, ApiError, type Cell } from "../api";
 import { useAuth } from "../auth";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
@@ -10,6 +10,7 @@ import { BruteSizeControl, portraitScale, useBruteSize } from "../ui/BruteSize";
 import { GfxEditor } from "../ui/GfxEditor";
 import { useApi } from "../useApi";
 import { useNames } from "../ui/language";
+import { AdminBruteLabel, RankIcon } from "./Rank";
 import { FightRow, ResultBadge } from "./FightRow";
 
 /** Narrow screens show one part at a time: the brute, its kit and level-ups, or its record. */
@@ -34,8 +35,9 @@ export function CellPage() {
         <section className="panel cell-identity" aria-label={`${b.name}`}>
           <Portrait gfx={b.gfx} name={b.name} lazy={false} className="cell-portrait" />
           <h1 className="cell-name">{b.name}</h1>
+          {b.adminBrute && <AdminBruteLabel />}
           <p className="cell-level">Level {b.level}</p>
-          <XpBar xp={b.xp} required={b.xpRequired} />
+          <XpBar xp={b.xp} required={b.xpRequired} banked={b.banked} />
           <div className="cell-action">
             {b.pendingLevelUp ? (
               <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>
@@ -47,6 +49,7 @@ export function CellPage() {
             <FightPips left={b.fightsLeft} total={b.dailyFights} />
             <span className="muted small">{b.fightsLeft} of {b.dailyFights} fights left today</span>
           </div>
+          <RankPanel cell={data} onChanged={reload} />
           <dl className="record">
             <div><dt>Wins</dt><dd>{b.record.wins}</dd></div>
             <div><dt>Losses</dt><dd>{b.record.losses}</dd></div>
@@ -135,6 +138,76 @@ function LifetimeStats({ l }: { l: Record<string, number> }) {
         </table>
       ))}
       <p className="hint">Bomb and downpour damage isn't included: the original fight log doesn't say whom they hit.</p>
+    </div>
+  );
+}
+
+/** Rank, today's tournament entry and (when allowed) the time capsule. */
+function RankPanel({ cell, onChanged }: { cell: Cell; onChanged: () => void }) {
+  const b = cell.brute;
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [todayId, setTodayId] = useState<string | null>(null); // set when the server says we already entered
+  const enter = async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await api.enterTournament(b.id);
+      nav(`/brutes/${b.id}/tournaments/${r.tournament.id}`);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "already_entered") {
+        // the newest tournament in the list is today's
+        try { setTodayId((await api.bruteTournaments(b.id, 1)).items[0]?.id ?? null); } catch { setError(e.message); }
+      } else setError((e as Error).message);
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="rank-panel">
+      <div className="rank-head">
+        <RankIcon rank={b.rank} />
+        <strong>{b.rank.name}</strong>
+      </div>
+      <p className="muted small">
+        {b.rank.titlesNeeded === null ? "Top rank" : `Titles ${b.rank.titles}/${b.rank.titlesNeeded}`}. Today's bracket: {b.rank.bracketSize} brutes.
+      </p>
+      {todayId ? (
+        <Link to={`/brutes/${b.id}/tournaments/${todayId}`} className="btn play">Today's tournament</Link>
+      ) : (
+        <button type="button" className="btn play" disabled={busy || b.pendingLevelUp} onClick={enter}>Enter today's tournament</button>
+      )}
+      {b.pendingLevelUp && <p className="muted small">Choose your level-up first</p>}
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <Link to={`/brutes/${b.id}/history`} className="small">Tournament history</Link>
+      {cell.capsule && <TimeCapsule id={b.id} maxTarget={cell.capsule.maxTarget} onDone={onChanged} />}
+    </div>
+  );
+}
+
+function TimeCapsule({ id, maxTarget, onDone }: { id: string; maxTarget: number; onDone: () => void }) {
+  const [level, setLevel] = useState(maxTarget);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const rewind = async () => {
+    setError(null);
+    try { await api.timeCapsule(id, level); setConfirming(false); onDone(); }
+    catch (e) { setError((e as Error).message); }
+  };
+  return (
+    <div className="capsule">
+      <h3>Time capsule</h3>
+      <label>Rewind to level
+        <select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setConfirming(false); }}>
+          {Array.from({ length: maxTarget }, (_, i) => i + 1).map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </label>
+      {confirming ? (
+        <div className="row">
+          <span className="small">This rewind can't be undone.</span>
+          <button type="button" className="btn danger solid" onClick={rewind}>Rewind to level {level}</button>
+          <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>Cancel</button>
+        </div>
+      ) : <button type="button" className="btn ghost" onClick={() => setConfirming(true)}>Rewind…</button>}
+      {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   );
 }

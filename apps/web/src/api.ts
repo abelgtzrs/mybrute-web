@@ -36,7 +36,10 @@ export interface User { id: string; username: string; role: Role; bruteCount?: n
 export interface Attributes { strength: number; agility: number; speed: number; life: number }
 export interface Kit { weapons: string[]; supers: string[]; followers: string[]; perms: string[]; talents: string[] }
 export type FightResult = "win" | "loss" | "draw";
+/** Where a brute stands in the ranked ladder. cap is null for admin brutes (no limit). */
+export interface RankInfo { rank: number; name: string; titles: number; titlesNeeded: number | null; cap: number | null; bracketSize: number }
 export interface BruteSummary {
+  adminBrute: boolean; rank: RankInfo; banked: boolean; // banked: at the level cap, so new XP is only stored
   id: string; name: string; seedId: number; gfx: string; level: number; levelUps: number;
   xp: number; xpRequired: number; pendingLevelUp: boolean; fightsLeft: number; dailyFights: number;
   record: { fights: number; wins: number; losses: number; draws: number }; createdAt: string; attributes?: Attributes;
@@ -50,6 +53,7 @@ export interface Cell {
   brute: BruteSummary; canChangeAppearance: boolean; bits: string; attributes: Attributes; kit: Kit; check: boolean;
   pendingOptions: [LevelOption, LevelOption] | null; lifetime: Record<string, number>;
   recentFights: FightListItem[]; levelUps: LevelUpRecord[];
+  capsule: { maxTarget: number } | null; // set only while the time capsule is usable
 }
 export interface Opponent { offerId: string; name: string; seedId: number; level: number; levelUps: number; choices: number[]; gfx: string; attributes: Attributes; kit: Kit }
 export interface FightDetail {
@@ -58,6 +62,16 @@ export interface FightDetail {
   playerStats: FighterStats; opponentStats: FighterStats;
   player: { name: string; seedId: number; gfx: string; level: number };
   opponent: { name: string; seedId: number; gfx: string; level: number };
+  tournament: { id: string; round: number; totalRounds: number } | null;
+}
+type TournamentOpponent = { name: string; level: number; gfx: string };
+export interface TournamentView {
+  id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
+  finished: boolean; champion: boolean | null; next: { opponent: TournamentOpponent } | null;
+  rounds: { round: number; fightId: string; result: "win" | "loss"; opponent: TournamentOpponent }[];
+}
+export interface TournamentListItem {
+  id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
 }
 
 export const api = {
@@ -76,6 +90,14 @@ export const api = {
   history: (id: string, page: number, result?: string) =>
     request<{ total: number; page: number; pageSize: number; fights: FightListItem[] }>("GET", `/api/brutes/${id}/fights?page=${page}${result ? `&result=${result}` : ""}`),
   levelUp: (id: string, index: number, choice: 0 | 1) => request<{ ok: true; level: number }>("POST", `/api/brutes/${id}/level-up`, { index, choice }),
+  // "brute" prefix: the admin Lab already has api.tournaments
+  enterTournament: (id: string) => request<{ tournament: TournamentView }>("POST", `/api/brutes/${id}/tournament`),
+  bruteTournament: (id: string, tid: string) => request<{ tournament: TournamentView }>("GET", `/api/brutes/${id}/tournaments/${tid}`),
+  bruteTournaments: (id: string, page: number) =>
+    request<Paged & { items: TournamentListItem[] }>("GET", `/api/brutes/${id}/tournaments?page=${page}`),
+  openRounds: (id: string, tid: string, all?: boolean) =>
+    request<{ fightIds: string[]; tournament: TournamentView }>("POST", `/api/brutes/${id}/tournaments/${tid}/open`, all ? { all: true } : {}),
+  timeCapsule: (id: string, level: number) => request<{ ok: true; level: number }>("POST", `/api/brutes/${id}/time-capsule`, { level }),
   getFight: (fightId: string) => request<{ fight: FightDetail; brute: BruteSummary }>("GET", `/api/fights/${fightId}`),
 
   labPayloads: () => request<{ items: { key: string; label: string; params: string; savedAt: string }[] }>("GET", "/api/lab/payloads"),

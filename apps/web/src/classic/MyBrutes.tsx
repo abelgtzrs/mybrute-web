@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { Portrait } from "../swf/Portrait";
+import { AdminBruteLabel, RankIcon } from "./Rank";
 import { FightPips, XpBar } from "../ui/BruteKit";
 import { useApi } from "../useApi";
 
@@ -34,9 +35,9 @@ export function MyBrutesPage() {
               <Link to={`/brutes/${b.id}`} className={"roster-card" + (b.pendingLevelUp ? " pending" : "")}>
                 <Portrait gfx={b.gfx} name={b.name} className="roster-portrait" />
                 <span className="roster-text">
-                  <span className="roster-name">{b.name}</span>
+                  <span className="roster-name">{b.name} <RankIcon rank={b.rank} />{b.adminBrute && <AdminBruteLabel />}</span>
                   <span className="roster-level">Level {b.level}</span>
-                  <XpBar xp={b.xp} required={b.xpRequired} />
+                  <XpBar xp={b.xp} required={b.xpRequired} banked={b.banked} />
                   {b.pendingLevelUp
                     ? <span className="badge gold">Level-up waiting</span>
                     : <FightPips left={b.fightsLeft} total={b.dailyFights} />}

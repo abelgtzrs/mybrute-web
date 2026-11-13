@@ -36,11 +36,11 @@ export function KitList({ kit, hideEmpty = false }: { kit: KitValues; hideEmpty?
   );
 }
 
-export function XpBar({ xp, required, label = true }: { xp: number; required: number; label?: boolean }) {
+export function XpBar({ xp, required, label = true, banked = false }: { xp: number; required: number; label?: boolean; banked?: boolean }) {
   const pct = Math.min(100, Math.round((xp / required) * 100));
   return (
     <div className="xp">
-      {label && <div className="xp-label"><span>Experience</span><span>{xp} / {required} XP</span></div>}
+      {label && <div className="xp-label"><span>Experience</span><span>{xp} / {required} XP{banked && " (banked)"}</span></div>}
       <div className="xp-track" role="progressbar" aria-valuemin={0} aria-valuemax={required} aria-valuenow={Math.min(xp, required)} aria-label="Experience toward the next level">
         <div className="xp-fill" style={{ width: `${pct}%` }} />
       </div>
