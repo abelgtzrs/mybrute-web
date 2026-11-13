@@ -14,11 +14,6 @@ export function xpFor(result: FightResult): number {
   return result === "win" ? 2 : 1;
 }
 
-/** Reaching the requirement never levels up by itself: the brute waits for a level-up choice. */
-export function isPending(xp: number, displayLevel: number): boolean {
-  return xp >= requiredXp(displayLevel);
-}
-
 export interface Rank {
   name: string;
   npcMin: number; // NPC level range a brute of this rank fights

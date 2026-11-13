@@ -9,7 +9,7 @@ import {
 } from "@mybrute/engine";
 import { isUniqueViolation, withTx, type Db, type Tx } from "./db";
 import { badRequest, conflict, notFound } from "./errors";
-import { bruteNameProblem, classicDay, fightsUsedToday, isPending, requiredXp, xpFor, type FightResult } from "./rules";
+import { bruteNameProblem, classicDay, capFor, fightsUsedToday, isWaiting, rankInfo, requiredXp, xpFor, type FightResult } from "./rules";
 
 const ARENA = 2; // the arena every historical payload uses
 const OPPONENTS_PER_VISIT = 8;
@@ -18,6 +18,7 @@ const HISTORY_PAGE = 20;
 interface BruteRow {
   id: string; owner_id: string; name: string; seed_id: number; gfx: string; level_ups: number; bits: string;
   xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date; appearance_changes: number;
+  rank: number; rank_titles: number; admin_brute: boolean;
 }
 
 export interface Settings { maxBrutesDefault: number; dailyFights: number; maxImportLevel: number }
@@ -36,9 +37,12 @@ const dayString = (d: string | Date | null) => (d == null ? null : typeof d === 
 function summary(b: BruteRow, s: Settings, record: { fights: number; wins: number; losses: number; draws: number }) {
   const level = displayLevel(b.level_ups);
   const used = fightsUsedToday(dayString(b.fights_day), b.fights_used);
+  // at or above the cap, new XP is only banked until a rank-up lifts the cap
+  const banked = level >= capFor(b.rank, b.admin_brute);
   return {
     id: b.id, name: b.name, seedId: b.seed_id, gfx: b.gfx, level, levelUps: b.level_ups,
     xp: b.xp, xpRequired: requiredXp(level), pendingLevelUp: b.pending_level_up,
+    adminBrute: b.admin_brute, rank: rankInfo(b.rank, b.rank_titles, b.admin_brute), banked,
     fightsLeft: Math.max(0, s.dailyFights - used), dailyFights: s.dailyFights, record, createdAt: b.created_at,
   };
 }
@@ -99,8 +103,8 @@ export async function createBrute(db: Db, userId: string, body: unknown, role: s
       const cap = role === "admin" ? ADMIN_MAX_LEVEL : Math.max(1, settings.maxImportLevel);
       if (displayLevel(levelUps as number) > cap) throw badRequest(`Brutes can be imported up to level ${cap}.`);
       const row = (await tx.query<BruteRow>(
-        "insert into brutes (owner_id, name, seed_id, gfx, level_ups, bits) values ($1, $2, $3, $4, $5, $6) returning *",
-        [userId, name, b.seedId, b.gfx, levelUps, bitsToHex(choices as Choice[], levelUps as number)])).rows[0];
+        "insert into brutes (owner_id, name, seed_id, gfx, level_ups, bits, admin_brute) values ($1, $2, $3, $4, $5, $6, $7) returning *",
+        [userId, name, b.seedId, b.gfx, levelUps, bitsToHex(choices as Choice[], levelUps as number), role === "admin"])).rows[0];
       return { brute: summary(row, settings, emptyRecord) };
     });
   } catch (e) {
@@ -249,7 +253,7 @@ export async function startFight(db: Db, userId: string, bruteId: string, body: 
     const result: FightResult = r.win === null ? "draw" : r.win === 0 ? "win" : "loss";
     const award = xpFor(result);
     const xpAfter = b.xp + award;
-    const pendingAfter = isPending(xpAfter, displayLevel(b.level_ups));
+    const pendingAfter = isWaiting(xpAfter, displayLevel(b.level_ups), capFor(b.rank, b.admin_brute));
 
     const fight = (await tx.query<{ id: string }>(
       `insert into fights (brute_id, offer_id, spec, result, events, xp_awarded, level_ups, xp_after, pending_after, player_stats, opponent_stats)
@@ -325,6 +329,8 @@ export async function levelUp(db: Db, userId: string, bruteId: string, body: unk
       if (done && done.choice === choice) return { ok: true, repeated: true, level: displayLevel(b.level_ups) };
       throw conflict("That level-up was already decided.", "level_up_done");
     }
+    const cap = capFor(b.rank, b.admin_brute);
+    if (displayLevel(b.level_ups) >= cap) throw conflict("This brute has reached its rank's level cap. Win tournaments to raise it.", "level_cap");
     if (b.level_ups !== index || !b.pending_level_up) throw conflict("This brute has no level-up waiting.", "no_level_up");
 
     const choices = choicesOf(b);
@@ -335,7 +341,7 @@ export async function levelUp(db: Db, userId: string, bruteId: string, body: unk
     if (!check.check) throw new Error(`progression check failed for brute ${b.id}`);
     const spent = requiredXp(displayLevel(b.level_ups));
     const xp = b.xp - spent;
-    const pending = isPending(xp, displayLevel(levelUps));
+    const pending = isWaiting(xp, displayLevel(levelUps), cap);
     await tx.query("insert into level_ups (brute_id, idx, choice, options, xp_spent) values ($1, $2, $3, $4, $5)",
       [b.id, index, choice, JSON.stringify(options), spent]);
     await tx.query("update brutes set level_ups = $2, bits = $3, xp = $4, pending_level_up = $5 where id = $1",

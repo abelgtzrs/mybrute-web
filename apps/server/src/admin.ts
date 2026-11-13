@@ -7,7 +7,7 @@ import { hashPassword, type Role, type SessionUser } from "./auth";
 import * as classic from "./classic";
 import { isUniqueViolation, withTx, type Db, type Tx } from "./db";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "./errors";
-import { bruteNameProblem, classicDay, DAILY_TIME_ZONE, fightsUsedToday, isPending, PASSWORD_RULES, requiredXp } from "./rules";
+import { bruteNameProblem, classicDay, DAILY_TIME_ZONE, capFor, fightsUsedToday, isWaiting, PASSWORD_RULES, requiredXp } from "./rules";
 
 const PAGE_SIZE = 25;
 const LOG_PAGE_SIZE = 50;
@@ -67,6 +67,7 @@ export async function overview(db: Db) {
 interface UserRow {
   id: string; username: string; role: Role; max_brutes: number | null; created_at: Date; last_login_at: Date | null;
   suspended_at: Date | null; suspend_reason: string | null; brutes: number; fights: number; total?: number;
+  rank: number; rank_titles: number; admin_brute: boolean;
 }
 const USER_COLUMNS = `u.id, u.username, u.role, u.max_brutes, u.created_at, u.last_login_at, u.suspended_at, u.suspend_reason,
   (select count(*) from brutes b where b.owner_id = u.id)::int brutes,
@@ -202,6 +203,7 @@ export function deleteUser(db: Db, admin: SessionUser, id: string) {
 interface BruteRow {
   id: string; owner_id: string; owner: string; name: string; seed_id: number; gfx: string; level_ups: number; bits: string;
   xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date; fights: number; total?: number;
+  rank: number; rank_titles: number; admin_brute: boolean;
 }
 const BRUTE_SORTS: Record<string, string> = {
   new: "b.created_at desc, b.id desc",
@@ -261,7 +263,7 @@ export function setXp(db: Db, admin: SessionUser, id: string, b: unknown) {
   const xp = body(b).xp;
   if (!Number.isInteger(xp) || (xp as number) < 0 || (xp as number) > LIMITS.xp) throw badRequest(`XP is a whole number from 0 to ${LIMITS.xp.toLocaleString("en")}.`);
   return onBrute(db, id, async (tx, br) => {
-    const pending = isPending(xp as number, displayLevel(br.level_ups));
+    const pending = isWaiting(xp as number, displayLevel(br.level_ups), capFor(br.rank, br.admin_brute));
     await tx.query("update brutes set xp = $2, pending_level_up = $3 where id = $1", [br.id, xp, pending]);
     await audit(tx, admin, "brute.set_xp", bruteTarget(br), { from: br.xp, to: xp, pendingLevelUp: pending });
     return { ok: true, pendingLevelUp: pending };
@@ -324,7 +326,7 @@ export function undoLevelUp(db: Db, admin: SessionUser, id: string) {
     const xp = br.xp + (last?.xp_spent ?? requiredXp(displayLevel(idx)));
     await tx.query("delete from level_ups where brute_id = $1 and idx = $2", [br.id, idx]);
     await tx.query("update brutes set level_ups = $2, bits = $3, xp = $4, pending_level_up = $5 where id = $1",
-      [br.id, idx, bitsToHex(choices, idx), xp, isPending(xp, displayLevel(idx))]);
+      [br.id, idx, bitsToHex(choices, idx), xp, isWaiting(xp, displayLevel(idx), capFor(br.rank, br.admin_brute))]);
     // opponents found at the old level no longer match
     await tx.query("delete from opponent_offers where brute_id = $1 and consumed_at is null", [br.id]);
     await audit(tx, admin, "brute.undo_level_up", bruteTarget(br), { level: idx + 2, undone: last?.options[last.choice]?.text ?? null });

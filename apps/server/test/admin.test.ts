@@ -140,6 +140,13 @@ describe("managing brutes", () => {
     expect((await admin.call("POST", `/api/admin/brutes/${b.id}/xp`, { xp: -3 })).status).toBe(400);
   });
 
+  it("set XP follows the cap", async () => {
+    const { admin, b } = await setup();
+    await h.db.query("update brutes set level_ups = 19, bits = $2 where id = $1", [b.id, "000000"]);
+    const r = await admin.call("POST", `/api/admin/brutes/${b.id}/xp`, { xp: 500 });
+    expect(r.body.pendingLevelUp).toBe(false);
+  });
+
   it("gives back today's fights", async () => {
     const { admin, alice, b } = await setup();
     await h.db.query("update settings set value = '1' where key = 'daily_fights'");

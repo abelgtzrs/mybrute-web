@@ -5,7 +5,6 @@ import {
   capFor,
   classicDay,
   fightsUsedToday,
-  isPending,
   isWaiting,
   RANKS,
   rankInfo,
@@ -22,13 +21,6 @@ describe("Classic rules", () => {
 
   it("awards 2 XP for a win and 1 for a loss or a draw", () => {
     expect([xpFor("win"), xpFor("loss"), xpFor("draw")]).toEqual([2, 1, 1]);
-  });
-
-  it("marks a level-up as pending once the requirement is met, without levelling", () => {
-    expect(isPending(1, 1)).toBe(false);
-    expect(isPending(2, 1)).toBe(true);
-    expect(isPending(3, 1)).toBe(true); // carry-over
-    expect(isPending(5, 3)).toBe(false);
   });
 
   it("uses Bordeaux days, including the summer-time offset", () => {
