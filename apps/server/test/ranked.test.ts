@@ -109,6 +109,7 @@ describe("hiding and opening", () => {
     const row = await bruteRow(b.id);
     expect([row.xp, row.rank_titles]).toEqual([13, 1]);
     expect((await list(p, b.id)).items[0].placing).toBe("Champion");
+    expect(rest.body.tournament.placing).toBe("Champion"); // the view and the list share one wording
 
     const again = await open(p, b.id, t.id, { all: true });
     expect(again.status).toBe(200);

@@ -67,7 +67,7 @@ export interface FightDetail {
 type TournamentOpponent = { name: string; level: number; gfx: string };
 export interface TournamentView {
   id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
-  finished: boolean; champion: boolean | null; next: { opponent: TournamentOpponent } | null;
+  finished: boolean; champion: boolean | null; placing: string | null; next: { opponent: TournamentOpponent } | null;
   rounds: { round: number; fightId: string; result: "win" | "loss"; opponent: TournamentOpponent }[];
 }
 export interface TournamentListItem {

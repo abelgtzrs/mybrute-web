@@ -21,7 +21,7 @@ type Opponent = { name: string; level: number; gfx: string };
 export interface OpenedRound { round: number; fightId: string; result: "win" | "loss"; opponent: Opponent }
 export interface TournamentView {
   id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
-  finished: boolean; champion: boolean | null; rounds: OpenedRound[]; next: { opponent: Opponent } | null;
+  finished: boolean; champion: boolean | null; placing: string | null; rounds: OpenedRound[]; next: { opponent: Opponent } | null;
 }
 export interface TournamentListItem {
   id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
@@ -43,6 +43,7 @@ async function view(db: Db | Tx, t: TournamentRow): Promise<TournamentView> {
     id: t.id, day: t.day, rank: t.rank, rankName: RANKS[t.rank].name, size: t.size,
     totalRounds: Math.log2(t.size), roundsOpened: t.rounds_opened, finished,
     champion: finished ? t.champion : null,
+    placing: placingOf(finished, t.champion, t.size, t.rounds.length),
     rounds: t.rounds.slice(0, t.rounds_opened).map((r, i) => ({ round: i + 1, fightId: fightIds[i], result: r.result, opponent: opponentOf(r.opponent) })),
     next: next ? { opponent: opponentOf(next.opponent) } : null,
   };
@@ -52,6 +53,11 @@ async function view(db: Db | Tx, t: TournamentRow): Promise<TournamentView> {
 function placing(size: number, lostInRound: number): string {
   const left = size / 2 ** (lostInRound - 1);
   return left === 2 ? "Final" : left === 4 ? "Semi-final" : left === 8 ? "Quarter-final" : `Round of ${left}`;
+}
+
+/** The one place placing text is decided (view and list share it). Null until every round is open. */
+function placingOf(finished: boolean, champion: boolean, size: number, played: number): string | null {
+  return !finished ? null : champion ? "Champion" : placing(size, played);
 }
 
 async function tournamentRow(db: Db | Tx, bruteId: string, tid: string, lock = false): Promise<TournamentRow> {
@@ -171,7 +177,7 @@ export async function listBruteTournaments(db: Db, userId: string, bruteId: stri
     const finished = t.rounds_opened === t.played;
     return {
       id: t.id, day: t.day, rank: t.rank, rankName: RANKS[t.rank].name, size: t.size, roundsOpened: t.rounds_opened, finished,
-      placing: !finished ? null : t.champion ? "Champion" : placing(t.size, t.played),
+      placing: placingOf(finished, t.champion, t.size, t.played),
     };
   });
   return { total: Number(r.rows[0]?.total ?? 0), page: p, pageSize: LIST_PAGE, items };

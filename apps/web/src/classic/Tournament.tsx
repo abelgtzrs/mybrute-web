@@ -1,17 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, type RankInfo, type TournamentView } from "../api";
+import { api } from "../api";
 import { useApi } from "../useApi";
 import { ResultBadge } from "./FightRow";
 import { RankIcon } from "./Rank";
-
-/** Where the brute ended up. Only called once every round is open, so it leaks nothing. */
-function placing(t: TournamentView) {
-  if (t.champion) return "Champion";
-  const lost = t.rounds[t.rounds.length - 1]?.round ?? 1;
-  const left = t.size / 2 ** (lost - 1); // brutes still in the bracket when it lost
-  return left === 2 ? "Runner-up" : `Round of ${left}`;
-}
 
 /** One tournament: opened rounds, the next opponent, and the final placing once everything is open. */
 export function TournamentPage() {
@@ -45,13 +37,13 @@ export function TournamentPage() {
       <header className="page-head">
         <div>
           <h1>Tournament, {t.day}</h1>
-          <span className="muted"><RankIcon rank={{ rank: t.rank, name: t.rankName } as RankInfo} /> {t.rankName}, {t.size}-brute bracket</span>
+          <span className="muted"><RankIcon rank={{ rank: t.rank, name: t.rankName }} /> {t.rankName}, {t.size}-brute bracket</span>
         </div>
         <Link to={`/brutes/${id}`} className="btn ghost light">Back to the cell</Link>
       </header>
       <section className="panel history-panel">
         {failure && <p className="field-error" role="alert">{failure}</p>}
-        {t.finished && <p className="fight-verdict">{placing(t)}</p>}
+        {t.placing && <p className="fight-verdict">{t.placing}</p>}
         {t.rounds.length > 0 && (
           <ul className="fight-list">
             {t.rounds.map((r) => (
