@@ -27,7 +27,8 @@ export function FightPage({ admin = false }: { admin?: boolean }) {
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data || !params) return <div className="page"><p className="page-status">Loading the fight…</p></div>;
   const { fight: f, brute: b } = data;
-  const back = admin ? `/admin/brutes/${b.id}` : `/brutes/${b.id}`;
+  const tour = f.tournament;
+  const back = admin ? `/admin/brutes/${b.id}` : tour ? `/brutes/${b.id}/tournaments/${tour.id}` : `/brutes/${b.id}`;
 
   return (
     <div className="page fight-page">
@@ -36,7 +37,7 @@ export function FightPage({ admin = false }: { admin?: boolean }) {
           <h1>{f.player.name} vs {f.opponent.name}</h1>
           <span className="muted">Level {f.player.level} against level {f.opponent.level}{data.owner ? `, owned by ${data.owner.username}` : ""}</span>
         </div>
-        <Link to={back} className="btn ghost light">{admin ? "Back to the brute" : "Back to the cell"}</Link>
+        <Link to={back} className="btn ghost light">{admin ? "Back to the brute" : tour ? "Back to the tournament" : "Back to the cell"}</Link>
       </header>
       <div className="fight-layout">
         <div className="fight-stage-wrap">
@@ -69,9 +70,15 @@ function FightResultPanel({ data, admin, onReplay }: { data: FightData; admin: b
     <div className="fight-result">
       <p className={`fight-verdict ${f.result}`}>{TITLES[f.result]}</p>
       {f.result === "draw" && <p className="muted small">The arena's 1000-action limit was reached.</p>}
-      <p className="fight-xp">+{f.xpAwarded} XP</p>
-      <XpBar xp={f.xpAfter} required={f.xpRequired} />
-      {f.pendingAfter && <p className="badge gold">Level-up ready</p>}
+      {f.tournament ? (
+        <p>Round {f.tournament.round} of {f.tournament.totalRounds}. <Link to={`/brutes/${b.id}/tournaments/${f.tournament.id}`}>Back to the tournament</Link></p>
+      ) : (
+        <>
+          <p className="fight-xp">+{f.xpAwarded} XP</p>
+          <XpBar xp={f.xpAfter} required={f.xpRequired} />
+          {f.pendingAfter && <p className="badge gold">Level-up ready</p>}
+        </>
+      )}
       <StatCompare you={f.playerStats} them={f.opponentStats} names={[f.player.name, f.opponent.name]} />
       <div className="fight-next">
         {!admin && b.pendingLevelUp && <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>}

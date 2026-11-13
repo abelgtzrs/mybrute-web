@@ -10,6 +10,7 @@ import { CellPage } from "./classic/Cell";
 import { CreateBrutePage } from "./classic/CreateBrute";
 import { FightPage } from "./classic/FightView";
 import { HistoryPage } from "./classic/History";
+import { TournamentPage } from "./classic/Tournament";
 import { LevelUpPage } from "./classic/LevelUp";
 import { MyBrutesPage } from "./classic/MyBrutes";
 import { OpponentsPage } from "./classic/Opponents";
@@ -57,6 +58,7 @@ export function App() {
           <Route path="/brutes/:id/fight" element={<RequireAuth><OpponentsPage /></RequireAuth>} />
           <Route path="/brutes/:id/level-up" element={<RequireAuth><LevelUpPage /></RequireAuth>} />
           <Route path="/brutes/:id/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
+          <Route path="/brutes/:id/tournaments/:tid" element={<RequireAuth><TournamentPage /></RequireAuth>} />
           <Route path="/fights/:fightId" element={<RequireAuth><FightPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
             <Route index element={<AdminOverview />} />

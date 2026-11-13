@@ -177,7 +177,7 @@ function RankPanel({ cell, onChanged }: { cell: Cell; onChanged: () => void }) {
       )}
       {b.pendingLevelUp && <p className="muted small">Choose your level-up first</p>}
       {error && <p className="field-error" role="alert">{error}</p>}
-      <Link to={`/brutes/${b.id}/history`} className="small">Tournament history</Link>
+      <Link to={`/brutes/${b.id}/history?tab=tournaments`} className="small">Tournament history</Link>
       {cell.capsule && <TimeCapsule id={b.id} maxTarget={cell.capsule.maxTarget} onDone={onChanged} />}
     </div>
   );
