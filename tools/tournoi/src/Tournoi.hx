@@ -180,6 +180,7 @@ class Tournoi {//}
 		// original: 540 on a 600 stage. On taller stages the quarter-finals sit where that would land, so the podium
 		// goes in the free gap just below the semi-finals instead.
 		podium._y = if( extra > 0 ) semisY + 150 else HEIGHT - 60;
+		// MyBrute++ note: the podium sign has one frame per rank (12, checked by screenshot), so _league 0..11 needs no clamp
 		podium.smc.gotoAndStop(data._league+1);
 		
 		// done
