@@ -12,6 +12,7 @@ MyBrute++ is a modern recreation of the Muxxu / El Bruto game experience. It com
 - Classic persistent gameplay.
 - An unrestricted Laboratory for experiments.
 - Tournament creation and simulation.
+- Daily ranked tournaments for Classic brutes, with rank progression and a time capsule.
 - Administrative tools for moderation and maintenance.
 - A built-in documentation Guide based on the engine knowledge base.
 
@@ -150,7 +151,7 @@ Routes are registered in `apps/web/src/App.tsx`.
 | `/login` | `LoginPage` | Signs an existing user in. |
 | `/register` | `RegisterPage` | Creates a new account. |
 | `/lab` | `LabPage` | Opens the unrestricted Laboratory. |
-| `/tournaments` | `TournamentsPage` | Lists and manages tournaments. |
+| `/tournaments` | `TournamentsPage` | Admin-only Lab tournament tool (not the ranked Classic tournaments). |
 | `/guide` | `GuidePage` | Shows the default engine documentation page. |
 | `/guide/:page` | `GuidePage` | Shows a selected engine documentation page. |
 
@@ -163,7 +164,8 @@ Routes are registered in `apps/web/src/App.tsx`.
 | `/brutes/:id` | `CellPage` | Shows one brute’s cell, stats, equipment, appearance, and actions. |
 | `/brutes/:id/fight` | `OpponentsPage` | Loads available opponents and starts a fight. |
 | `/brutes/:id/level-up` | `LevelUpPage` | Presents and submits the brute’s level-up choice. |
-| `/brutes/:id/history` | `HistoryPage` | Displays the brute’s saved fight history. |
+| `/brutes/:id/history` | `HistoryPage` | Displays the brute’s saved fight history and, on its Tournaments tab (`?tab=tournaments`), its ranked tournaments. |
+| `/brutes/:id/tournaments/:tid` | `TournamentPage` | Shows one ranked tournament: opened rounds, the next opponent, and the placing. |
 | `/fights/:fightId` | `FightPage` | Replays a saved fight and displays its final result. |
 
 All Classic routes except authentication are protected by `RequireAuth`.
@@ -197,6 +199,8 @@ Admin routes are protected by `RequireAdmin`.
 | `apps/web/src/classic/FightRow.tsx` | Reusable history-row component. Shows result, opponent, date, and a link to fight playback. |
 | `apps/web/src/classic/History.tsx` | Paginated fight-history page. Loads saved results for one brute and renders `FightRow` components. |
 | `apps/web/src/classic/LevelUp.tsx` | Level-up page. Displays the two server-generated rewards and submits the selected reward. |
+| `apps/web/src/classic/Rank.tsx` | Rank panel shown on the brute cell. Uses the icons in `apps/web/public/ranks/` (0 to 11). |
+| `apps/web/src/classic/Tournament.tsx` | Ranked tournament page. Opens the next round and shows the bracket result so far. |
 
 ### Classic gameplay sequence
 
@@ -314,6 +318,18 @@ Implements persistent Classic gameplay, including:
 
 This module calls the engine package to calculate progression, fight inputs, fight results, and payload data.
 
+### `apps/server/src/ranked.ts`
+
+Implements daily ranked tournaments for Classic brutes:
+
+- Entering a brute into the day's tournament. The whole bracket is simulated at entry and stored hidden in `classic_tournaments`.
+- Opening rounds one at a time. A round's fight is written to `fights` and paid only when the player opens it.
+- Listing tournaments and viewing one, plus the time capsule rewind.
+
+### `apps/server/src/bracket.ts`
+
+Pure bracket simulation with no database access. It runs the NPC bracket rounds for a given rank and size.
+
 ### `apps/server/src/lab.ts`
 
 Implements Lab persistence:
@@ -363,6 +379,11 @@ Authentication routes are supplied through `authPlugin` from `auth.ts`. The fron
 | `GET` | `/api/brutes/:id/fights` | List fight history. |
 | `POST` | `/api/brutes/:id/level-up` | Submit a level-up reward choice. |
 | `GET` | `/api/fights/:id` | Load a saved fight. |
+| `POST` | `/api/brutes/:id/tournament` | Enter the brute into today's ranked tournament. |
+| `GET` | `/api/brutes/:id/tournaments` | List the brute's ranked tournaments (paginated). |
+| `GET` | `/api/brutes/:id/tournaments/:tid` | Load one ranked tournament. |
+| `POST` | `/api/brutes/:id/tournaments/:tid/open` | Open the next round(s) and pay for them. |
+| `POST` | `/api/brutes/:id/time-capsule` | Rewind a brute at its level cap to a lower level. |
 
 ### Laboratory API
 
@@ -375,7 +396,9 @@ Authentication routes are supplied through `authPlugin` from `auth.ts`. The fron
 | `POST` | `/api/lab/brutes` | Save a Lab brute. |
 | `DELETE` | `/api/lab/brutes/:id` | Delete a Lab brute. |
 
-### Tournament API
+### Lab tournament API (admin only)
+
+The `/api/tournaments` routes are the admin Lab tool, not the ranked tournaments above.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -394,6 +417,7 @@ Unknown `/api/*` routes return a structured 404 response.
 | `apps/server/migrations/002_admin.sql` | Roles, suspension fields, administrative settings, and audit logging. |
 | `apps/server/migrations/003_gfx_colours.sql` | Additional brute appearance and color fields. |
 | `apps/server/migrations/004_tournaments.sql` | Tournament storage and related state. |
+| `apps/server/migrations/006_ranked_tournaments.sql` | Brute `rank`, `rank_titles` and `admin_brute` columns; `classic_tournaments` table; `fights.tournament_id` and `tournament_round` (a fight comes from a training offer or a tournament round, never both). |
 
 Migrations are applied by `main.ts` during startup or manually through `migrate-cli.ts`.
 
@@ -501,6 +525,8 @@ Located under `apps/server/test/`:
 | `admin.test.ts` | Admin authorization and moderation safeguards. |
 | `rules.test.ts` | Shared business-rule validation. |
 | `tournaments.test.ts` | Tournament persistence and API behavior. |
+| `ranked.test.ts` | Ranked tournament entry, rounds, and time capsule. |
+| `bracket.test.ts` | Pure bracket simulation. |
 | `helpers.ts` | Shared test setup and request helpers. |
 | `global-setup.ts` | Test database lifecycle. |
 
@@ -522,6 +548,15 @@ Tests use the embedded PostgreSQL development/test database when no external dat
 - Reaching the XP threshold does not automatically level up the brute.
 - Fights are blocked until a pending level-up choice is resolved.
 - Level-up choices affect future progression and offers.
+
+### Ranked tournament rules
+
+- Brutes have 12 ranks (0 to 11). Each rank has a level cap for non-admin brutes, and the top rank is Brutal Legend.
+- A brute's bracket size doubles with each title: 16, 32, and so on, up to 256.
+- Each brute can enter one ranked tournament per day (`classic_tournaments` is unique per brute and day).
+- Title XP is 5, 10, 15, 20, then 25 for every title after that.
+- Only a brute exactly at its cap can use the time capsule, and it can rewind to any level up to 5 levels below the cap.
+- Admin brutes have no level cap and cannot use the time capsule.
 
 ### Engine and playback rules
 
