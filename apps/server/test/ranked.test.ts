@@ -195,3 +195,26 @@ describe("privacy", () => {
     expect((await bob.call("GET", `/api/fights/${fightId}`)).status).toBe(404);
   });
 });
+
+describe("training-only records", () => {
+  it("keeps tournament fights out of records, lifetime and fight history, and labels them on the fight page", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, SURE_WIN);
+    const admin = await Player.register(h.app, "root");
+    await h.db.query("update users set role = 'admin' where username = 'root'");
+    const adminFights = async () => (await admin.call("GET", "/api/admin/overview")).body.counts.fights;
+    const cell = async () => (await p.call("GET", `/api/brutes/${b.id}`)).body;
+    const history = async () => (await p.call("GET", `/api/brutes/${b.id}/fights`)).body;
+    const before = { record: (await cell()).brute.record.fights, lifetime: (await cell()).lifetime.fights, total: (await history()).total, admin: await adminFights() };
+
+    const t = (await enter(p, b.id)).body.tournament;
+    const fightId = (await open(p, b.id, t.id, { all: true })).body.fightIds[0];
+
+    const after = await cell();
+    expect([after.brute.record.fights, after.lifetime.fights, (await history()).total]).toEqual([before.record, before.lifetime, before.total]);
+    expect(after.recentFights ?? []).toHaveLength(0);
+    expect(await adminFights()).toBe(before.admin + 4);
+    const fight = (await p.call("GET", `/api/fights/${fightId}`)).body.fight;
+    expect(fight.tournament).toMatchObject({ round: 1, totalRounds: 4 });
+  });
+});

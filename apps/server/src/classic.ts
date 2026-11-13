@@ -47,13 +47,14 @@ function summary(b: BruteRow, s: Settings, record: { fights: number; wins: numbe
   };
 }
 
+// Records, lifetime stats and history count training fights only (offer_id set); tournament fights are left out.
 async function records(db: Db | Tx, bruteIds: string[]) {
   const out = new Map<string, { fights: number; wins: number; losses: number; draws: number }>();
   if (!bruteIds.length) return out;
   const r = await db.query<{ brute_id: string; fights: string; wins: string; losses: string; draws: string }>(
     `select brute_id, count(*) fights, count(*) filter (where result = 'win') wins,
             count(*) filter (where result = 'loss') losses, count(*) filter (where result = 'draw') draws
-       from fights where brute_id = any($1::bigint[]) group by brute_id`, [bruteIds]);
+       from fights where brute_id = any($1::bigint[]) and offer_id is not null group by brute_id`, [bruteIds]);
   for (const row of r.rows) out.set(row.brute_id, { fights: +row.fights, wins: +row.wins, losses: +row.losses, draws: +row.draws });
   return out;
 }
@@ -151,7 +152,7 @@ async function lifetime(db: Db | Tx, bruteId: string) {
     `select count(*)::int fights, coalesce(max((player_stats->>'highestHit')::int), 0) as "highestHit",
             coalesce(max((player_stats->>'totalDamageDealt')::int), 0) as "bestFightDamage",
             coalesce(sum(xp_awarded), 0)::int as "xpFromFights", ${sums}, ${counters}
-       from fights where brute_id = $1`, [bruteId]);
+       from fights where brute_id = $1 and offer_id is not null`, [bruteId]);
   const row = r.rows[0] as Record<string, string | number>;
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(row)) out[k.startsWith("c_") ? k.slice(2).toLowerCase() : k] = Number(v);
@@ -269,13 +270,15 @@ export async function startFight(db: Db, userId: string, bruteId: string, body: 
 
 interface FightRow {
   id: string; brute_id: string; created_at: Date; spec: FightSpec; result: FightResult; events: number; xp_awarded: number;
+  tournament_id: string | null; tournament_round: number | null;
   level_ups: number; xp_after: number; pending_after: boolean; player_stats: FighterStats; opponent_stats: FighterStats;
 }
 
 export async function getFight(db: Db, userId: string, fightId: string) {
   if (!/^\d{1,18}$/.test(fightId)) throw notFound("That fight doesn't exist.");
-  const f = (await db.query<FightRow & { owner_id: string }>(
-    "select f.*, b.owner_id from fights f join brutes b on b.id = f.brute_id where f.id = $1 and b.owner_id = $2", [fightId, userId])).rows[0];
+  const f = (await db.query<FightRow & { owner_id: string; tournament_size: number | null }>(
+    `select f.*, b.owner_id, t.size tournament_size from fights f join brutes b on b.id = f.brute_id
+       left join classic_tournaments t on t.id = f.tournament_id where f.id = $1 and b.owner_id = $2`, [fightId, userId])).rows[0];
   if (!f) throw notFound("That fight doesn't exist.");
   const b = await ownedBrute(db, userId, f.brute_id);
   const s = await getSettings(db);
@@ -283,6 +286,8 @@ export async function getFight(db: Db, userId: string, fightId: string) {
   const level = displayLevel(f.level_ups);
   return {
     fight: {
+      // set for tournament fights so the page can label them, e.g. round 2 of 4
+      tournament: f.tournament_id ? { id: f.tournament_id, round: f.tournament_round!, totalRounds: Math.log2(f.tournament_size!) } : null,
       id: f.id, createdAt: f.created_at, result: f.result, events: f.events, xpAwarded: f.xp_awarded,
       level, xpAfter: f.xp_after, xpRequired: requiredXp(level), pendingAfter: f.pending_after,
       spec: f.spec, playerStats: f.player_stats, opponentStats: f.opponent_stats,
@@ -299,7 +304,7 @@ export async function listFights(db: Db, userId: string, bruteId: string, q: { p
   const page = Math.max(1, Math.floor(q.page ?? 1));
   const filter = q.result === "win" || q.result === "loss" || q.result === "draw" ? q.result : null;
   const r = await db.query<FightRow & { total: string }>(
-    `select *, count(*) over () total from fights where brute_id = $1 and ($2::text is null or result = $2)
+    `select *, count(*) over () total from fights where brute_id = $1 and offer_id is not null and ($2::text is null or result = $2)
       order by created_at desc, id desc limit $3 offset $4`, [b.id, filter, pageSize, (page - 1) * pageSize]);
   return {
     total: Number(r.rows[0]?.total ?? 0), page, pageSize,
