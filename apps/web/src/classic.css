@@ -267,21 +267,6 @@
 .capsule { display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--paper-edge); padding-top: 8px; width: 100%; }
 .capsule h3 { margin: 0; }
 
-/* Tournament page bracket: same look as the Lab bracket, own class names so the Lab stylesheet stays untouched. */
-.tb { display: flex; gap: 22px; overflow-x: auto; padding: 4px 2px 10px; margin-bottom: 12px; }
-.tb-round { flex: none; min-width: 170px; display: flex; flex-direction: column; }
-.tb-round h4 { margin: 0 0 8px; color: var(--ink-3); font-size: var(--t-meta); letter-spacing: 1px; text-transform: uppercase; }
-.tb-ties { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 10px; }
-.tb-tie { display: grid; border: 1px solid var(--paper-edge); border-radius: 8px; overflow: hidden; background: var(--paper); color: var(--ink); }
-.tb-tie.path { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
-.tb-slot { display: flex; align-items: center; gap: 8px; padding: 5px 8px; min-height: 44px; }
-.tb-slot + .tb-slot { border-top: 1px solid var(--paper-edge); }
-.tb-slot.me .tb-name { color: var(--team1-deep); }
-.tb-slot.won { background: rgb(214 168 60 / .28); }
-.tb-slot.lost { opacity: .75; } /* dimmed, not faded: still readable. The winner is also named for screen readers */
-.tb-slot.tbd { opacity: .5; }
-.tb-name { min-width: 0; display: grid; font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.tb-name small { color: var(--ink-2); font-weight: 600; font-size: var(--t-meta); }
-.tb-head { position: relative; flex: none; width: 48px; height: 48px; overflow: hidden; border-radius: 50%; pointer-events: none; }
-.tb-head .tb-head-art { position: absolute; left: -1px; top: -2px; width: 50px; height: 98px; aspect-ratio: auto; }
-.tb-head.empty { display: grid; place-content: center; color: var(--ink-3); font-weight: 900; }
+/* Tournament page: the original bracket SWF at its exact pixel size, scrolling sideways when the screen is narrow */
+.tournoi-box { overflow-x: auto; margin-bottom: 12px; }
+.tournoi { flex: none; }

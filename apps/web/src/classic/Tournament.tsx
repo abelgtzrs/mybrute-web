@@ -1,10 +1,42 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { api } from "../api";
+import { useMemo, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { tournoiParams, tournoiSize } from "@mybrute/engine";
+import { api, type TournamentView } from "../api";
+import { useAuth } from "../auth";
+import { swfUrl } from "../swf/ruffle";
+import { SwfPlayer } from "../swf/SwfPlayer";
 import { useApi } from "../useApi";
 import { ResultBadge } from "./FightRow";
-import { TournamentBracket } from "./TournamentBracket";
 import { AdminBruteLabel, RankIcon } from "./Rank";
+
+/** The original bracket SWF. Clicking VS opens .../watch/<round>, which sends the player to that round's fight. */
+function BracketSwf({ t, brutePath }: { t: TournamentView; brutePath: string }) {
+  const { user } = useAuth();
+  const bracket = t.bracket!;
+  // New params (after Watch or Skip) reload the player, so only rebuild them when the bracket really changes
+  const params = useMemo(
+    () => tournoiParams(bracket, { perso: swfUrl("perso.swf"), fightPrefix: `${brutePath}/tournaments/${t.id}/watch/`, user: user?.username ?? "", league: t.rank }),
+    [bracket, brutePath, t.id, t.rank, user?.username],
+  );
+  const { width, height } = tournoiSize(t.size);
+  // The SWF has a fixed pixel size (noScale), so a narrow screen scrolls this box, not the page
+  return (
+    <div className="tournoi-box">
+      <SwfPlayer swf="tournoi.swf" params={params} label="Tournament bracket" allowScript className="tournoi" style={{ width, height }} />
+    </div>
+  );
+}
+
+/** Where the bracket's VS click lands: straight into that round's fight, or back to the bracket if the round isn't opened. */
+export function TournamentWatchRedirect() {
+  const { id = "", tid = "", round = "" } = useParams();
+  const { data, error } = useApi(() => api.bruteTournament(id, tid), [id, tid]);
+  const back = `/brutes/${id}/tournaments/${tid}`;
+  if (error) return <Navigate to={back} replace />;
+  if (!data) return <div className="page"><p className="page-status">Opening the fight…</p></div>;
+  const fight = data.tournament.rounds.find((r) => r.round === Number(round));
+  return <Navigate to={fight ? `/fights/${fight.fightId}` : back} replace />;
+}
 
 /** One tournament: the full bracket (revealed round by round), opened rounds, the next opponent, and the final placing once everything is open. */
 export function TournamentPage() {
@@ -46,7 +78,7 @@ export function TournamentPage() {
       <section className="panel history-panel">
         {failure && <p className="field-error" role="alert">{failure}</p>}
         {t.placing && <p className="fight-verdict">{t.placing}</p>}
-        {t.bracket && <TournamentBracket bracket={t.bracket} totalRounds={t.totalRounds} />}
+        {t.bracket && <BracketSwf t={t} brutePath={`/brutes/${id}`} />}
         {t.rounds.length > 0 && (
           <ul className="fight-list">
             {t.rounds.map((r) => (
