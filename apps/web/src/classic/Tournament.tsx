@@ -23,7 +23,7 @@ export function TournamentPage() {
     setBusy(true); setFailure("");
     try {
       const r = await api.openRounds(id, tid, all);
-      if (all) setData({ tournament: r.tournament });
+      if (all) { setData({ tournament: r.tournament }); void cell.reload(); } // skipping pays XP, which may leave a level-up waiting
       else navigate(`/fights/${r.fightIds[0]}`);
     } catch (e) {
       setFailure((e as Error).message);
