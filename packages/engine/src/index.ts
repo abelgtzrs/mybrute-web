@@ -10,3 +10,4 @@ export * from "./lab";
 export { inventoryParams, INVENTORY_LANGS } from "./inventory";
 export * from "./avoid";
 export * from "./names";
+export * from "./tournoi";
