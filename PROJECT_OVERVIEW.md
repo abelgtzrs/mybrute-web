@@ -199,7 +199,7 @@ Admin routes are protected by `RequireAdmin`.
 | `apps/web/src/classic/FightRow.tsx` | Reusable history-row component. Shows result, opponent, date, and a link to fight playback. |
 | `apps/web/src/classic/History.tsx` | Paginated fight-history page. Loads saved results for one brute and renders `FightRow` components. |
 | `apps/web/src/classic/LevelUp.tsx` | Level-up page. Displays the two server-generated rewards and submits the selected reward. |
-| `apps/web/src/classic/Rank.tsx` | Rank panel shown on the brute cell. Uses the icons in `apps/web/public/ranks/` (0 to 11). |
+| `apps/web/src/classic/Rank.tsx` | Rank icon and the "Admin brute" label. (The rank panel itself lives in `Cell.tsx`.) Uses the icons in `apps/web/public/ranks/` (0 to 11). |
 | `apps/web/src/classic/Tournament.tsx` | Ranked tournament page. Opens the next round and shows the bracket result so far. |
 
 ### Classic gameplay sequence

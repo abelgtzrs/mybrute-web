@@ -82,11 +82,11 @@ function FightResultPanel({ data, admin, onReplay }: { data: FightData; admin: b
       <StatCompare you={f.playerStats} them={f.opponentStats} names={[f.player.name, f.opponent.name]} />
       <div className="fight-next">
         {!admin && b.pendingLevelUp && <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>}
-        {canFight && <Link to={`/brutes/${b.id}/fight`} className="btn play">Fight again</Link>}
-        <FightPips left={b.fightsLeft} total={b.dailyFights} />
-        <span className="muted small">{b.fightsLeft} of {b.dailyFights} fights left today</span>
+        {canFight && !f.tournament && <Link to={`/brutes/${b.id}/fight`} className="btn play">Fight again</Link>}
+        {!f.tournament && <FightPips left={b.fightsLeft} total={b.dailyFights} />}
+        {!f.tournament && <span className="muted small">{b.fightsLeft} of {b.dailyFights} fights left today</span>}
         <div className="row">
-          <Link to={admin ? `/admin/brutes/${b.id}` : `/brutes/${b.id}`} className="btn ghost">{admin ? "Back to the brute" : "Back to the cell"}</Link>
+          {!f.tournament && <Link to={admin ? `/admin/brutes/${b.id}` : `/brutes/${b.id}`} className="btn ghost">{admin ? "Back to the brute" : "Back to the cell"}</Link>}
           <button type="button" className="btn ghost" onClick={onReplay}>Watch again</button>
         </div>
       </div>

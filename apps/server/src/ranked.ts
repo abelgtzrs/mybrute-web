@@ -84,6 +84,7 @@ async function openNext(tx: Tx, b: BruteRow, t: TournamentRow, count: number): P
     if (t.champion && roundNo === t.rounds.length) {
       xp += titleXp(t.titles_before);
       b.rank_titles += 1;
+      // b.rank equals t.rank here: every past tournament is opened before a new entry, so at most one is ever unopened
       const needed = RANKS[b.rank].titlesNeeded; // null on the top rank: it just keeps counting
       if (needed !== null && b.rank_titles >= needed) { b.rank += 1; b.rank_titles = 0; }
     }
@@ -149,13 +150,26 @@ export async function enterTournament(db: Db, userId: string, bruteId: string): 
   }
 }
 
-/** Opens the next round, or all remaining ones with `{ all: true }`. Opening when everything is open changes nothing. */
+/**
+ * Opens rounds. `{ all: true }` opens every remaining one. `{ round: n }` opens round n only if it is the next one;
+ * asking again for an already-open round returns its fight and changes nothing, so a retry or a stale tab is safe.
+ * With neither field it opens the next round.
+ */
 export async function openRounds(db: Db, userId: string, bruteId: string, tid: string, body: unknown): Promise<{ fightIds: string[]; tournament: TournamentView }> {
-  const all = (body as Record<string, unknown> | null)?.all === true;
+  const { all, round } = (body ?? {}) as { all?: unknown; round?: unknown };
+  if (round !== undefined && (!Number.isInteger(round) || (round as number) < 1)) throw badRequest("round must be a positive whole number.");
   return withTx(db, async (tx) => {
     const b = await ownedBrute(tx, userId, bruteId, true);
     const t = await tournamentRow(tx, b.id, tid, true);
-    const fightIds = await openNext(tx, b, t, all ? Infinity : 1);
+    let fightIds: string[];
+    if (round !== undefined && (round as number) <= t.rounds_opened) {
+      fightIds = (await tx.query<{ id: string }>(
+        "select id from fights where tournament_id = $1 and tournament_round = $2", [t.id, round])).rows.map((r) => r.id);
+    } else if (round !== undefined && round !== t.rounds_opened + 1) {
+      throw conflict("Open the rounds in order.", "round_out_of_order");
+    } else {
+      fightIds = await openNext(tx, b, t, all === true ? Infinity : 1);
+    }
     return { fightIds, tournament: await view(tx, t) };
   });
 }

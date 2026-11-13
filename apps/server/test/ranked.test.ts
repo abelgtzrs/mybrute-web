@@ -92,7 +92,9 @@ describe("hiding and opening", () => {
   it("opens rounds in order and pays each once", async () => {
     const { p, b } = await setup();
     await raise(b.id, SURE_WIN);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.todayTournamentId).toBeNull();
     const t = (await enter(p, b.id)).body.tournament;
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.todayTournamentId).toBe(t.id);
 
     const one = await open(p, b.id, t.id);
     expect(one.status).toBe(200);
@@ -127,6 +129,25 @@ describe("hiding and opening", () => {
     expect(both.map((r) => r.body.fightIds.length).sort()).toEqual([0, 4]);
     expect((await bruteRow(b.id)).xp).toBe(13);
     expect(await tournamentFights()).toBe(4);
+  });
+
+  it("opening by round number is idempotent and in order", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, SURE_WIN);
+    const t = (await enter(p, b.id)).body.tournament;
+    const both = await Promise.all([open(p, b.id, t.id, { round: 1 }), open(p, b.id, t.id, { round: 1 })]);
+    expect(both.map((r) => r.status)).toEqual([200, 200]);
+    expect(both[0].body.fightIds).toHaveLength(1);
+    expect(both[1].body.fightIds).toEqual(both[0].body.fightIds);
+    expect((await bruteRow(b.id)).xp).toBe(2);
+    expect(await tournamentFights()).toBe(1);
+    expect(both[0].body.tournament.roundsOpened).toBe(1);
+
+    const later = await open(p, b.id, t.id, { round: 1 });
+    expect(later.body.fightIds).toEqual(both[0].body.fightIds);
+    const skip = await open(p, b.id, t.id, { round: 3 });
+    expect([skip.status, skip.body.error]).toEqual([409, "round_out_of_order"]);
+    expect((await open(p, b.id, t.id, { round: 0 })).status).toBe(400);
   });
 
   it("opening works while a level-up is waiting", async () => {

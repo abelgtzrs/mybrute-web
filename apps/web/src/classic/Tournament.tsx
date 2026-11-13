@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useApi } from "../useApi";
 import { ResultBadge } from "./FightRow";
-import { RankIcon } from "./Rank";
+import { AdminBruteLabel, RankIcon } from "./Rank";
 
 /** One tournament: opened rounds, the next opponent, and the final placing once everything is open. */
 export function TournamentPage() {
@@ -22,8 +22,9 @@ export function TournamentPage() {
   async function open(all: boolean) {
     setBusy(true); setFailure("");
     try {
-      const r = await api.openRounds(id, tid, all);
-      if (all) { setData({ tournament: r.tournament }); void cell.reload(); } // skipping pays XP, which may leave a level-up waiting
+      // Watch names the round it wants, so a double click or stale tab can't open the one after it
+      const r = await api.openRounds(id, tid, all ? { all: true } : { round: t.roundsOpened + 1 });
+      if (all || !r.fightIds[0]) { setData({ tournament: r.tournament }); void cell.reload(); } // skipping pays XP, which may leave a level-up waiting
       else navigate(`/fights/${r.fightIds[0]}`);
     } catch (e) {
       setFailure((e as Error).message);
@@ -37,7 +38,7 @@ export function TournamentPage() {
       <header className="page-head">
         <div>
           <h1>Tournament, {t.day}</h1>
-          <span className="muted"><RankIcon rank={{ rank: t.rank, name: t.rankName }} /> {t.rankName}, {t.size}-brute bracket</span>
+          <span className="muted"><RankIcon rank={{ rank: t.rank, name: t.rankName }} /> {t.rankName}, {t.size}-brute bracket{cell.data?.brute.adminBrute && <> <AdminBruteLabel /></>}</span>
         </div>
         <Link to={`/brutes/${id}`} className="btn ghost light">Back to the cell</Link>
       </header>

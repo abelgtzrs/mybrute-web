@@ -264,5 +264,5 @@
 .rank-panel { display: grid; justify-items: center; gap: 6px; width: 100%; margin: 6px 0; }
 .rank-panel p { margin: 0; }
 .rank-head { display: flex; align-items: center; gap: 6px; }
-.capsule { display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--line, #0002); padding-top: 8px; width: 100%; }
+.capsule { display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--paper-edge); padding-top: 8px; width: 100%; }
 .capsule h3 { margin: 0; }

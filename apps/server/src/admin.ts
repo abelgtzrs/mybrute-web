@@ -67,7 +67,6 @@ export async function overview(db: Db) {
 interface UserRow {
   id: string; username: string; role: Role; max_brutes: number | null; created_at: Date; last_login_at: Date | null;
   suspended_at: Date | null; suspend_reason: string | null; brutes: number; fights: number; total?: number;
-  rank: number; rank_titles: number; admin_brute: boolean;
 }
 const USER_COLUMNS = `u.id, u.username, u.role, u.max_brutes, u.created_at, u.last_login_at, u.suspended_at, u.suspend_reason,
   (select count(*) from brutes b where b.owner_id = u.id)::int brutes,

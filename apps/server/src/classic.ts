@@ -169,6 +169,10 @@ export async function getCell(db: Db, userId: string, bruteId: string, role: str
   const levelUps = (await db.query<{ idx: number; choice: number; options: [LevelOption, LevelOption]; created_at: Date }>(
     "select idx, choice, options, created_at from level_ups where brute_id = $1 order by idx", [b.id])).rows
     .map((l) => ({ index: l.idx, level: l.idx + 2, choice: l.choice, chosen: l.options[l.choice], other: l.options[1 - l.choice], at: l.created_at }));
+  const max = capsuleMaxTarget(displayLevel(b.level_ups), capFor(b.rank, b.admin_brute));
+  // today's tournament, so the cell can link to it after entering (a plain query: ranked.ts imports this file)
+  const today = (await db.query<{ id: string }>(
+    "select id from classic_tournaments where brute_id = $1 and day = $2", [b.id, classicDay()])).rows[0];
   return {
     brute: summary(b, s, rec),
     canChangeAppearance: role === "admin" || b.appearance_changes < 1,
@@ -179,7 +183,8 @@ export async function getCell(db: Db, userId: string, bruteId: string, role: str
     recentFights: recent,
     levelUps,
     // set only when the brute is exactly at its cap; the app offers the rewind then
-    capsule: ((max) => (max === null ? null : { maxTarget: max }))(capsuleMaxTarget(displayLevel(b.level_ups), capFor(b.rank, b.admin_brute))),
+    capsule: max === null ? null : { maxTarget: max },
+    todayTournamentId: today?.id ?? null,
   };
 }
 

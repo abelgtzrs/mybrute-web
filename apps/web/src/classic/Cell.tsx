@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { hexToChoices } from "@mybrute/engine";
-import { api, ApiError, type Cell } from "../api";
+import { api, type Cell } from "../api";
 import { useAuth } from "../auth";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
@@ -148,17 +148,15 @@ function RankPanel({ cell, onChanged }: { cell: Cell; onChanged: () => void }) {
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [todayId, setTodayId] = useState<string | null>(null); // set when the server says we already entered
+  const todayId = cell.todayTournamentId;
   const enter = async () => {
     setBusy(true); setError(null);
     try {
       const r = await api.enterTournament(b.id);
       nav(`/brutes/${b.id}/tournaments/${r.tournament.id}`);
     } catch (e) {
-      if (e instanceof ApiError && e.code === "already_entered") {
-        // the newest tournament in the list is today's
-        try { setTodayId((await api.bruteTournaments(b.id, 1)).items[0]?.id ?? null); } catch { setError(e.message); }
-      } else setError((e as Error).message);
+      setError((e as Error).message);
+      onChanged(); // a refused entry may still have opened and paid a past tournament
     } finally { setBusy(false); }
   };
   return (
@@ -171,7 +169,7 @@ function RankPanel({ cell, onChanged }: { cell: Cell; onChanged: () => void }) {
         {b.rank.titlesNeeded === null ? "Top rank" : `Titles ${b.rank.titles}/${b.rank.titlesNeeded}`}. Today's bracket: {b.rank.bracketSize} brutes.
       </p>
       {todayId ? (
-        <Link to={`/brutes/${b.id}/tournaments/${todayId}`} className="btn play">Today's tournament</Link>
+        <Link to={`/brutes/${b.id}/tournaments/${todayId}`} className="btn play">Go to today's tournament</Link>
       ) : (
         <button type="button" className="btn play" disabled={busy || b.pendingLevelUp} onClick={enter}>Enter today's tournament</button>
       )}

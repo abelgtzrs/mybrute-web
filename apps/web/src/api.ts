@@ -53,6 +53,7 @@ export interface Cell {
   brute: BruteSummary; canChangeAppearance: boolean; bits: string; attributes: Attributes; kit: Kit; check: boolean;
   pendingOptions: [LevelOption, LevelOption] | null; lifetime: Record<string, number>;
   recentFights: FightListItem[]; levelUps: LevelUpRecord[];
+  todayTournamentId: string | null; // set once the brute has entered today's tournament
   capsule: { maxTarget: number } | null; // set only while the time capsule is usable
 }
 export interface Opponent { offerId: string; name: string; seedId: number; level: number; levelUps: number; choices: number[]; gfx: string; attributes: Attributes; kit: Kit }
@@ -95,8 +96,9 @@ export const api = {
   bruteTournament: (id: string, tid: string) => request<{ tournament: TournamentView }>("GET", `/api/brutes/${id}/tournaments/${tid}`),
   bruteTournaments: (id: string, page: number) =>
     request<Paged & { items: TournamentListItem[] }>("GET", `/api/brutes/${id}/tournaments?page=${page}`),
-  openRounds: (id: string, tid: string, all?: boolean) =>
-    request<{ fightIds: string[]; tournament: TournamentView }>("POST", `/api/brutes/${id}/tournaments/${tid}/open`, all ? { all: true } : {}),
+  // round: 1-based number of the round to open; asking for one that is already open just returns its fight
+  openRounds: (id: string, tid: string, body: { all: true } | { round: number }) =>
+    request<{ fightIds: string[]; tournament: TournamentView }>("POST", `/api/brutes/${id}/tournaments/${tid}/open`, body),
   timeCapsule: (id: string, level: number) => request<{ ok: true; level: number }>("POST", `/api/brutes/${id}/time-capsule`, { level }),
   getFight: (fightId: string) => request<{ fight: FightDetail; brute: BruteSummary }>("GET", `/api/fights/${fightId}`),
 
