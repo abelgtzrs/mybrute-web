@@ -9,6 +9,7 @@ import * as classic from "./classic";
 import type { Db } from "./db";
 import { HttpError } from "./errors";
 import * as lab from "./lab";
+import * as ranked from "./ranked";
 import * as tournaments from "./tournaments";
 
 /** Vite's build output (assets/*) and Ruffle's core files (ruffle/*.<20 hex>.wasm|js) carry a content hash in their name;
@@ -42,6 +43,12 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   app.get<P & { Querystring: { page?: string; result?: string } }>("/api/brutes/:id/fights", async (req) =>
     classic.listFights(db, requireUser(req).id, req.params.id, { page: Number(req.query.page) || 1, result: req.query.result }));
   app.post<P>("/api/brutes/:id/level-up", async (req) => classic.levelUp(db, requireUser(req).id, req.params.id, req.body));
+  type T = { Params: { id: string; tid: string } };
+  app.post<P>("/api/brutes/:id/tournament", async (req) => ranked.enterTournament(db, requireUser(req).id, req.params.id));
+  app.get<P & { Querystring: { page?: string } }>("/api/brutes/:id/tournaments", async (req) =>
+    ranked.listBruteTournaments(db, requireUser(req).id, req.params.id, Number(req.query.page) || 1));
+  app.get<T>("/api/brutes/:id/tournaments/:tid", async (req) => ranked.getBruteTournament(db, requireUser(req).id, req.params.id, req.params.tid));
+  app.post<T>("/api/brutes/:id/tournaments/:tid/open", async (req) => ranked.openRounds(db, requireUser(req).id, req.params.id, req.params.tid, req.body));
   app.get<P>("/api/fights/:id", async (req) => classic.getFight(db, requireUser(req).id, req.params.id));
 
   app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireAdmin(req).id));

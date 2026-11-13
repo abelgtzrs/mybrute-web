@@ -15,7 +15,7 @@ const ARENA = 2; // the arena every historical payload uses
 const OPPONENTS_PER_VISIT = 8;
 const HISTORY_PAGE = 20;
 
-interface BruteRow {
+export interface BruteRow {
   id: string; owner_id: string; name: string; seed_id: number; gfx: string; level_ups: number; bits: string;
   xp: number; pending_level_up: boolean; fights_day: string | null; fights_used: number; created_at: Date; appearance_changes: number;
   rank: number; rank_titles: number; admin_brute: boolean;
@@ -60,7 +60,7 @@ async function records(db: Db | Tx, bruteIds: string[]) {
 const emptyRecord = { fights: 0, wins: 0, losses: 0, draws: 0 };
 
 /** Loads a brute the user owns, optionally locking it. Someone else's brute looks exactly like a missing one. */
-async function ownedBrute(db: Db | Tx, userId: string, bruteId: string, lock = false): Promise<BruteRow> {
+export async function ownedBrute(db: Db | Tx, userId: string, bruteId: string, lock = false): Promise<BruteRow> {
   if (!/^\d{1,18}$/.test(bruteId)) throw notFound("That brute doesn't exist.");
   const r = await db.query<BruteRow>(`select * from brutes where id = $1 and owner_id = $2${lock ? " for update" : ""}`, [bruteId, userId]);
   if (!r.rows[0]) throw notFound("That brute doesn't exist.");
