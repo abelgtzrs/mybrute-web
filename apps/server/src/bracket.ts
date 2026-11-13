@@ -45,33 +45,47 @@ function makeNpcs(snapshot: Snapshot, rank: number, count: number, rand: (n: num
 const fighter = (e: Snapshot, team: 0 | 1) =>
   ({ name: e.name, id: e.seedId, team, levelUps: e.levelUps, gfx: e.gfx, choices: hexToChoices(e.bits, e.levelUps) });
 
-/** Plays the whole bracket and returns only the rounds the brute fought (it stops at its first loss). */
-export function simulateBracket(snapshot: Snapshot, rank: number, size: number, rand: (n: number) => number): BracketRound[] {
-  let slots: Snapshot[] = makeNpcs(snapshot, rank, size - 1, rand);
-  slots.splice(rand(size), 0, snapshot);
-  const rounds: BracketRound[] = [];
+/** What the page needs to draw a slot (no fight bits). */
+export interface Entrant { seedId: number; name: string; gfx: string; levelUps: number }
 
-  while (slots.length > 1) {
-    const next: Snapshot[] = [];
-    for (let i = 0; i < slots.length; i += 2) {
-      const [left, right] = [slots[i], slots[i + 1]];
-      const isPlayer = left === snapshot || right === snapshot;
+/**
+ * Plays the whole bracket to a champion, even after the brute is knocked out.
+ * `rounds` holds only the brute's own fights (with full specs). `winners[r]` lists the winning slot of each match
+ * in round r, so the page can draw the bracket without any fight data.
+ */
+export function simulateBracket(snapshot: Snapshot, rank: number, size: number, rand: (n: number) => number):
+  { rounds: BracketRound[]; entrants: Entrant[]; bruteSlot: number; winners: number[][] } {
+  const slots: Snapshot[] = makeNpcs(snapshot, rank, size - 1, rand);
+  const bruteSlot = rand(size);
+  slots.splice(bruteSlot, 0, snapshot);
+  const rounds: BracketRound[] = [];
+  const winners: number[][] = [];
+  let alive = slots.map((_, i) => i); // slot numbers still in the bracket
+  let bruteOut = false;
+
+  while (alive.length > 1) {
+    const next: number[] = [];
+    for (let i = 0; i < alive.length; i += 2) {
       // the brute is always team 0; between two NPCs the left slot is team 0
-      const [a, b] = right === snapshot ? [right, left] : [left, right];
+      const [ia, ib] = alive[i + 1] === bruteSlot ? [alive[i + 1], alive[i]] : [alive[i], alive[i + 1]];
+      const [a, b] = [slots[ia], slots[ib]];
       const { spec, win, events, stats } = decideFight({
         seed: rand(SEED_LIMIT), arena: ARENA, lang: "en", p0: null, p1: null,
         brutes: [fighter(a, 0), fighter(b, 1)],
       });
-      next.push(win === 0 ? a : b);
-      if (isPlayer) {
+      next.push(win === 0 ? ia : ib);
+      if (ia === bruteSlot && !bruteOut) {
         rounds.push({
           opponent: b, spec, result: win === 0 ? "win" : "loss", events,
           playerStats: stats.get(a.seedId)!, opponentStats: stats.get(b.seedId)!,
         });
-        if (win === 1) return rounds;
+        if (win === 1) bruteOut = true;
       }
     }
-    slots = next;
+    // winners are listed in match order, which is the order the matches were played
+    winners.push(next);
+    alive = next;
   }
-  return rounds;
+  const entrants = slots.map(({ seedId, name, gfx, levelUps }) => ({ seedId, name, gfx, levelUps }));
+  return { rounds, entrants, bruteSlot, winners };
 }

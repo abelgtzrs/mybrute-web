@@ -3,7 +3,7 @@
 // Because unopened results never reach `fights`, no other read path can leak them.
 import { randomInt } from "node:crypto";
 import { bitsToHex, displayLevel, hexToChoices } from "@mybrute/engine";
-import { simulateBracket, type BracketRound, type Npc, type Snapshot } from "./bracket";
+import { simulateBracket, type BracketRound, type Entrant, type Npc, type Snapshot } from "./bracket";
 import { ownedBrute, type BruteRow } from "./classic";
 import { isUniqueViolation, withTx, type Db, type Tx } from "./db";
 import { badRequest, conflict, notFound } from "./errors";
@@ -15,6 +15,7 @@ const WIN_XP = 2;
 interface TournamentRow {
   id: string; brute_id: string; day: string; rank: number; titles_before: number; size: number;
   snapshot: Snapshot; rounds: BracketRound[]; rounds_opened: number; champion: boolean;
+  entrants: Entrant[] | null; brute_slot: number | null; winners: number[][] | null; // null on rows from before the full bracket
 }
 
 type Opponent = { name: string; level: number; gfx: string };
@@ -22,6 +23,7 @@ export interface OpenedRound { round: number; fightId: string; result: "win" | "
 export interface TournamentView {
   id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
   finished: boolean; champion: boolean | null; placing: string | null; rounds: OpenedRound[]; next: { opponent: Opponent } | null;
+  bracket: { entrants: (Opponent & { isBrute: boolean })[]; winners: number[][] } | null;
 }
 export interface TournamentListItem {
   id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
@@ -46,6 +48,17 @@ async function view(db: Db | Tx, t: TournamentRow): Promise<TournamentView> {
     placing: placingOf(finished, t.champion, t.size, t.rounds.length),
     rounds: t.rounds.slice(0, t.rounds_opened).map((r, i) => ({ round: i + 1, fightId: fightIds[i], result: r.result, opponent: opponentOf(r.opponent) })),
     next: next ? { opponent: opponentOf(next.opponent) } : null,
+    bracket: bracketOf(t, finished),
+  };
+}
+
+/** The whole bracket, with winners only for revealed rounds: all of them once finished, else the opened ones. */
+function bracketOf(t: TournamentRow, finished: boolean): TournamentView["bracket"] {
+  if (!t.entrants || !t.winners) return null;
+  const revealed = finished ? t.winners.length : t.rounds_opened;
+  return {
+    entrants: t.entrants.map((e, i) => ({ ...opponentOf(e as Npc), isBrute: i === t.brute_slot })),
+    winners: t.winners.slice(0, revealed),
   };
 }
 
@@ -134,13 +147,14 @@ export async function enterTournament(db: Db, userId: string, bruteId: string): 
       // later training, level-ups or a capsule rewind never change this tournament
       const snapshot: Snapshot = { seedId: b.seed_id, name: b.name, gfx: b.gfx, levelUps: b.level_ups, bits: b.bits };
       const size = bracketSize(b.rank_titles);
-      const rounds = simulateBracket(snapshot, b.rank, size, (n) => randomInt(n));
+      const { rounds, entrants, bruteSlot, winners } = simulateBracket(snapshot, b.rank, size, (n) => randomInt(n));
       const champion = rounds[rounds.length - 1].result === "win";
       const row = (await tx.query<TournamentRow>(
-        `insert into classic_tournaments (brute_id, day, rank, titles_before, size, snapshot, rounds, champion)
-         values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+        `insert into classic_tournaments (brute_id, day, rank, titles_before, size, snapshot, rounds, champion, entrants, brute_slot, winners)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning *`,
         // stringified: pg would turn a JS array into a Postgres array, not JSON
-        [b.id, today, b.rank, b.rank_titles, size, JSON.stringify(snapshot), JSON.stringify(rounds), champion])).rows[0];
+        [b.id, today, b.rank, b.rank_titles, size, JSON.stringify(snapshot), JSON.stringify(rounds), champion,
+          JSON.stringify(entrants), bruteSlot, JSON.stringify(winners)])).rows[0];
       return { tournament: await view(tx, row) };
     });
   } catch (e) {

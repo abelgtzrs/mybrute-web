@@ -13,7 +13,7 @@ function snapshot(levelUps: number): Snapshot {
 describe("simulateBracket", () => {
   it("plays the brute's path through a 16-brute bracket", () => {
     const snap = snapshot(9);
-    const rounds = simulateBracket(snap, 0, 16, rand);
+    const { rounds } = simulateBracket(snap, 0, 16, rand);
     expect(rounds.length).toBeGreaterThanOrEqual(1);
     expect(rounds.length).toBeLessThanOrEqual(4);
     rounds.slice(0, -1).forEach((r) => expect(r.result).toBe("win"));
@@ -30,7 +30,7 @@ describe("simulateBracket", () => {
 
   it("stores specs that replay to the stored result", () => {
     const snap = snapshot(9);
-    for (const round of simulateBracket(snap, 0, 16, rand)) {
+    for (const round of simulateBracket(snap, 0, 16, rand).rounds) {
       const win = runFight(round.spec).win;
       if (win !== null) expect(win).toBe(round.result === "win" ? 0 : 1);
       expect(round.spec.brutes[0].id).toBe(snap.seedId);
@@ -39,9 +39,22 @@ describe("simulateBracket", () => {
 
   it("a champion wins every round of a 256 bracket", () => {
     const start = Date.now();
-    const rounds = simulateBracket(snapshot(499), 0, 256, rand);
+    const { rounds } = simulateBracket(snapshot(499), 0, 256, rand);
     expect(rounds.length).toBe(8);
     rounds.forEach((r) => expect(r.result).toBe("win"));
     expect(Date.now() - start).toBeLessThan(2000);
+  });
+
+  it("simulates the whole bracket to a champion", () => {
+    const snap = snapshot(9);
+    const { rounds, entrants, bruteSlot, winners } = simulateBracket(snap, 0, 16, rand);
+    expect(winners.map((w) => w.length)).toEqual([8, 4, 2, 1]);
+    winners.forEach((round, r) => round.forEach((w, i) => {
+      const pair = r === 0 ? [2 * i, 2 * i + 1] : [winners[r - 1][2 * i], winners[r - 1][2 * i + 1]];
+      expect(pair).toContain(w);
+    }));
+    expect(entrants[bruteSlot].seedId).toBe(snap.seedId);
+    const wins = rounds.filter((r) => r.result === "win").length;
+    winners.forEach((round, k) => expect(round.includes(bruteSlot)).toBe(k < wins));
   });
 });

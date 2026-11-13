@@ -83,7 +83,8 @@ describe("hiding and opening", () => {
 
     const stored = (await h.db.query("select rounds from classic_tournaments where id = $1", [t.id])).rows[0].rounds;
     expect(t.next.opponent.name).toBe(stored[0].opponent.name);
-    const later = String(stored[1].opponent.seedId);
+    // the bracket shows every entrant's name (which is its id), so check the hidden fight itself instead
+    const later = String(stored[1].spec.seed);
     expect(JSON.stringify(r.body)).not.toContain(later);
     expect(JSON.stringify(await p.call("GET", `/api/brutes/${b.id}/tournaments/${t.id}`))).not.toContain(later);
     expect(JSON.stringify(await list(p, b.id))).not.toContain(later);
@@ -203,6 +204,41 @@ describe("rewards", () => {
     const row = await bruteRow(b.id);
     expect([row.xp, row.rank_titles]).toEqual([0, 0]);
     expect((await list(p, b.id)).items[0].placing).toBe("Round of 16");
+  });
+});
+
+describe("the bracket", () => {
+  it("reveals the bracket round by round", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, SURE_WIN);
+    const t = (await enter(p, b.id)).body.tournament;
+    expect(t.bracket.entrants.length).toBe(16);
+    expect(t.bracket.entrants.filter((e: { isBrute: boolean }) => e.isBrute).length).toBe(1);
+    expect(t.bracket.winners).toEqual([]);
+    const one = (await open(p, b.id, t.id)).body.tournament;
+    expect(one.bracket.winners.length).toBe(1);
+    expect(one.bracket.winners[0].length).toBe(8);
+    const done = (await open(p, b.id, t.id, { all: true })).body.tournament;
+    const slot = done.bracket.entrants.findIndex((e: { isBrute: boolean }) => e.isBrute);
+    expect(done.bracket.winners.length).toBe(4);
+    expect(done.bracket.winners[3][0]).toBe(slot);
+  });
+
+  it("a knocked-out brute reveals the rest of the bracket", async () => {
+    const { p, b } = await setup();
+    const t = (await enter(p, b.id)).body.tournament;
+    const r = (await open(p, b.id, t.id)).body.tournament;
+    expect(r.finished).toBe(true);
+    expect(r.bracket.winners.length).toBe(4);
+  });
+
+  it("old tournaments without bracket data still load", async () => {
+    const { p, b } = await setup();
+    const t = (await enter(p, b.id)).body.tournament;
+    await h.db.query("update classic_tournaments set entrants = null, brute_slot = null, winners = null where id = $1", [t.id]);
+    const r = await p.call("GET", `/api/brutes/${b.id}/tournaments/${t.id}`);
+    expect(r.status).toBe(200);
+    expect(r.body.tournament.bracket).toBeNull();
   });
 });
 
