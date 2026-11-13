@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useApi } from "../useApi";
 import { ResultBadge } from "./FightRow";
+import { TournamentBracket } from "./TournamentBracket";
 import { AdminBruteLabel, RankIcon } from "./Rank";
 
 /** One tournament: opened rounds, the next opponent, and the final placing once everything is open. */
@@ -45,6 +46,7 @@ export function TournamentPage() {
       <section className="panel history-panel">
         {failure && <p className="field-error" role="alert">{failure}</p>}
         {t.placing && <p className="fight-verdict">{t.placing}</p>}
+        {t.bracket && <TournamentBracket bracket={t.bracket} totalRounds={t.totalRounds} />}
         {t.rounds.length > 0 && (
           <ul className="fight-list">
             {t.rounds.map((r) => (

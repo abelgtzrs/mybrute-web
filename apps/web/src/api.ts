@@ -70,6 +70,8 @@ export interface TournamentView {
   id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
   finished: boolean; champion: boolean | null; placing: string | null; next: { opponent: TournamentOpponent } | null;
   rounds: { round: number; fightId: string; result: "win" | "loss"; opponent: TournamentOpponent }[];
+  /** Every entrant in slot order; winners[r] (match order) exists only for revealed rounds. Null on old tournaments. */
+  bracket: { entrants: (TournamentOpponent & { isBrute: boolean })[]; winners: number[][] } | null;
 }
 export interface TournamentListItem {
   id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
