@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ruffleReady, SWF_BASE, type RufflePlayerElement } from "./ruffle";
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   label: string;
   className?: string;
   /** fixed pixel size for SWFs that don't scale (tournoi.swf) */
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   /** client.swf (its _end javascript: URL) and tournoi.swf (its getURL click) need this */
   allowScript?: boolean;
   /** don't create a player until the element is on screen (perso previews in long lists) */

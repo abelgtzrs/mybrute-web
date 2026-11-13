@@ -267,6 +267,8 @@
 .capsule { display: grid; justify-items: center; gap: 6px; border-top: 1px solid var(--paper-edge); padding-top: 8px; width: 100%; }
 .capsule h3 { margin: 0; }
 
-/* Tournament page: the original bracket SWF at its exact pixel size, scrolling sideways when the screen is narrow */
-.tournoi-box { overflow-x: auto; margin-bottom: 12px; }
-.tournoi { flex: none; }
+/* Tournament page: the original bracket SWF at its exact pixel size. The page grows and scrolls like a long
+   document (other pages fit the viewport); only the SWF box scrolls sideways, with a visible bar, when the screen is narrow. */
+.page.tournament { height: auto; }
+/* overflow-y hidden: the player's inline baseline gap (a few px) would otherwise make a tiny vertical scroller */
+.tournoi-box { flex: none; overflow: auto hidden; margin-bottom: 12px; scrollbar-width: thin; }

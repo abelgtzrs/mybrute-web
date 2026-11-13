@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { tournoiParams, tournoiSize } from "../src/tournoi";
 import { LaBrute } from "../src/vendor";
-import { hxToPlain } from "../src/payload";
+import { fromBytes, hxToPlain } from "../src/payload";
 
 const entrants = Array.from({ length: 16 }, (_, i) => ({ name: `B${i}`, level: i + 1, gfx: "0;0;1;2;3;4;5;6;7;8;9;10;11;12;13;14", isBrute: i === 3 }));
 const opts = { perso: "/perso.swf", fightPrefix: "/fight/", user: "Me", league: 2 };
@@ -27,5 +27,15 @@ describe("tournoiParams", () => {
     expect(d._glads.filter((g: any) => g._u === "Me").map((g: any) => g._id)).toEqual([3]);
     expect(d._view).toBeNull();
     expect(d._max).toBe(16);
+  });
+});
+
+describe("non-ASCII names", () => {
+  it("decode back unchanged, the way the SWF reads them", () => {
+    const named = entrants.map((e, i) => (i === 0 ? { ...e, name: "Zoé" } : e));
+    const d = decode(tournoiParams({ entrants: named, winners: [] }, { ...opts, user: "Zoé" }));
+    expect(fromBytes(d._glads[0]._n)).toBe("Zoé");
+    expect(fromBytes(d._glads[3]._u)).toBe("Zoé");
+    expect(fromBytes(d._user)).toBe("Zoé");
   });
 });

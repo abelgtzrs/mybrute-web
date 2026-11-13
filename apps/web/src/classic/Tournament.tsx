@@ -10,9 +10,8 @@ import { ResultBadge } from "./FightRow";
 import { AdminBruteLabel, RankIcon } from "./Rank";
 
 /** The original bracket SWF. Clicking VS opens .../watch/<round>, which sends the player to that round's fight. */
-function BracketSwf({ t, brutePath }: { t: TournamentView; brutePath: string }) {
+function BracketSwf({ t, bracket, brutePath }: { t: TournamentView; bracket: NonNullable<TournamentView["bracket"]>; brutePath: string }) {
   const { user } = useAuth();
-  const bracket = t.bracket!;
   // New params (after Watch or Skip) reload the player, so only rebuild them when the bracket really changes
   const params = useMemo(
     () => tournoiParams(bracket, { perso: swfUrl("perso.swf"), fightPrefix: `${brutePath}/tournaments/${t.id}/watch/`, user: user?.username ?? "", league: t.rank }),
@@ -67,7 +66,7 @@ export function TournamentPage() {
   }
 
   return (
-    <div className="page history">
+    <div className="page history tournament">
       <header className="page-head">
         <div>
           <h1>Tournament, {t.day}</h1>
@@ -78,7 +77,7 @@ export function TournamentPage() {
       <section className="panel history-panel">
         {failure && <p className="field-error" role="alert">{failure}</p>}
         {t.placing && <p className="fight-verdict">{t.placing}</p>}
-        {t.bracket && <BracketSwf t={t} brutePath={`/brutes/${id}`} />}
+        {t.bracket && <BracketSwf t={t} bracket={t.bracket} brutePath={`/brutes/${id}`} />}
         {t.rounds.length > 0 && (
           <ul className="fight-list">
             {t.rounds.map((r) => (
