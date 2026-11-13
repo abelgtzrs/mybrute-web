@@ -278,7 +278,7 @@
 .tb-slot + .tb-slot { border-top: 1px solid var(--paper-edge); }
 .tb-slot.me .tb-name { color: var(--team1-deep); }
 .tb-slot.won { background: rgb(214 168 60 / .28); }
-.tb-slot.lost { opacity: .5; }
+.tb-slot.lost { opacity: .75; } /* dimmed, not faded: still readable. The winner is also named for screen readers */
 .tb-slot.tbd { opacity: .5; }
 .tb-name { min-width: 0; display: grid; font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tb-name small { color: var(--ink-2); font-weight: 600; font-size: var(--t-meta); }

@@ -6,7 +6,7 @@ import { ResultBadge } from "./FightRow";
 import { TournamentBracket } from "./TournamentBracket";
 import { AdminBruteLabel, RankIcon } from "./Rank";
 
-/** One tournament: opened rounds, the next opponent, and the final placing once everything is open. */
+/** One tournament: the full bracket (revealed round by round), opened rounds, the next opponent, and the final placing once everything is open. */
 export function TournamentPage() {
   const { id = "", tid = "" } = useParams();
   const navigate = useNavigate();

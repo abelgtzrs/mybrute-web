@@ -83,11 +83,16 @@ describe("hiding and opening", () => {
 
     const stored = (await h.db.query("select rounds from classic_tournaments where id = $1", [t.id])).rows[0].rounds;
     expect(t.next.opponent.name).toBe(stored[0].opponent.name);
-    // the bracket shows every entrant's name (which is its id), so check the hidden fight itself instead
-    const later = String(stored[1].spec.seed);
-    expect(JSON.stringify(r.body)).not.toContain(later);
-    expect(JSON.stringify(await p.call("GET", `/api/brutes/${b.id}/tournaments/${t.id}`))).not.toContain(later);
-    expect(JSON.stringify(await list(p, b.id))).not.toContain(later);
+    // no fight internals anywhere in the enter, GET or list responses, and no winners before anything is opened
+    const noInternals = (value: unknown) => {
+      const keys: string[] = [];
+      JSON.stringify(value, (k, v) => { keys.push(k); return v; });
+      expect(keys.filter((k) => ["spec", "events", "bits", "seed"].includes(k))).toEqual([]);
+    };
+    noInternals(r.body);
+    noInternals((await p.call("GET", `/api/brutes/${b.id}/tournaments/${t.id}`)).body);
+    noInternals(await list(p, b.id));
+    expect(t.bracket.winners).toEqual([]);
   });
 
   it("opens rounds in order and pays each once", async () => {

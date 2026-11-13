@@ -6,15 +6,16 @@ import type { TournamentView } from "../api";
 type Bracket = NonNullable<TournamentView["bracket"]>;
 
 /** Name a round by how many brutes are still in it (2 = the final). */
-function roundName(round: number, totalRounds: number, size: number) {
+function roundName(round: number, size: number) {
   const left = size / 2 ** (round - 1);
   return left === 2 ? "Final" : left === 4 ? "Semi-final" : left === 8 ? "Quarter-final" : `Round of ${left}`;
 }
 
-/** Idle brute cropped to the head. Lazy, so a 256-brute bracket only loads what scrolls into view. */
+/** Idle brute cropped to the head. Lazy, so a 256-brute bracket only loads what scrolls into view.
+ * shortcut: loaded headshots never unmount, so a fully scrolled 256 bracket can hold up to 510 players; upgrade if it gets slow. */
 const Headshot = memo(function Headshot({ gfx, name }: { gfx: string; name: string }) {
   return (
-    <span className="tb-head">
+    <span className="tb-head" aria-hidden="true">
       <SwfPlayer swf="perso.swf" params={persoParams(gfx, { stop: true })} label={`Headshot of ${name}`} lazy transparent className="tb-head-art" />
     </span>
   );
@@ -23,11 +24,11 @@ const Headshot = memo(function Headshot({ gfx, name }: { gfx: string; name: stri
 /** One slot of a match: an entrant, or an empty "?" while the round before it is still hidden. */
 function Slot({ bracket, index, won, lost }: { bracket: Bracket; index: number | undefined; won: boolean; lost: boolean }) {
   const who = index === undefined ? undefined : bracket.entrants[index];
-  if (!who) return <div className="tb-slot tbd"><span className="tb-head empty" aria-hidden="true">?</span><span className="tb-name">?</span></div>;
+  if (!who) return <div className="tb-slot tbd"><span className="tb-head empty" aria-hidden="true">?</span><span className="tb-name">?<span className="sr-only">To be decided</span></span></div>;
   return (
     <div className={"tb-slot" + (who.isBrute ? " me" : "") + (won ? " won" : "") + (lost ? " lost" : "")}>
       <Headshot gfx={who.gfx} name={who.name} />
-      <span className="tb-name">{who.name}<small>level {who.level}</small></span>
+      <span className="tb-name">{who.name}<small>level {who.level}</small>{who.isBrute && <span className="sr-only">(your brute)</span>}{won && <span className="sr-only">(winner)</span>}</span>
     </div>
   );
 }
@@ -43,7 +44,7 @@ export function TournamentBracket({ bracket, totalRounds }: { bracket: Bracket; 
         const matches = entrants.length / 2 ** (r + 1);
         return (
           <div className="tb-round" key={r}>
-            <h4>{roundName(r + 1, totalRounds, entrants.length)}</h4>
+            <h4>{roundName(r + 1, entrants.length)}</h4>
             <div className="tb-ties">
               {Array.from({ length: matches }, (_, i) => {
                 const pair = [entrantsIn?.[2 * i], entrantsIn?.[2 * i + 1]];

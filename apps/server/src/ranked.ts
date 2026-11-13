@@ -29,7 +29,7 @@ export interface TournamentListItem {
   id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
 }
 
-const opponentOf = (n: Npc): Opponent => ({ name: n.name, level: displayLevel(n.levelUps), gfx: n.gfx });
+const opponentOf = (n: Pick<Npc, "name" | "levelUps" | "gfx">): Opponent => ({ name: n.name, level: displayLevel(n.levelUps), gfx: n.gfx });
 const alreadyEntered = () => conflict("This brute already entered today's tournament.", "already_entered");
 
 /**
@@ -57,7 +57,7 @@ function bracketOf(t: TournamentRow, finished: boolean): TournamentView["bracket
   if (!t.entrants || !t.winners) return null;
   const revealed = finished ? t.winners.length : t.rounds_opened;
   return {
-    entrants: t.entrants.map((e, i) => ({ ...opponentOf(e as Npc), isBrute: i === t.brute_slot })),
+    entrants: t.entrants.map((e, i) => ({ ...opponentOf(e), isBrute: i === t.brute_slot })),
     winners: t.winners.slice(0, revealed),
   };
 }
