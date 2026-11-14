@@ -188,6 +188,20 @@ main {
 .masthead nav a.active {
   border-color: var(--gold);
 }
+/* count of brutes with something left to do today, on the "My brutes" link */
+.nav-badge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: 1px;
+}
 .masthead .lang-picker {
   width: auto;
   min-height: 30px;

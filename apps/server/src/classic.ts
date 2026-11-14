@@ -78,7 +78,21 @@ export async function listBrutes(db: Db, userId: string, role: string = "player"
   const rows = (await db.query<BruteRow>("select * from brutes where owner_id = $1 order by created_at, id", [userId])).rows;
   const rec = await records(db, rows.map((r) => r.id));
   const limit = (await db.query<{ max_brutes: number | null }>("select max_brutes from users where id = $1", [userId])).rows[0]?.max_brutes ?? s.maxBrutesDefault;
-  return { brutes: rows.map((b) => ({ ...summary(b, s, rec.get(b.id) ?? emptyRecord), attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))) })), maxBrutes: limit, maxImportLevel: role === "admin" ? ADMIN_MAX_LEVEL : Math.max(1, s.maxImportLevel) };
+  // tournament to-do per brute, for the "something to do" indicators: entered today? rounds still unopened (any day)?
+  // Only counts leave the server, never results.
+  const todoRows = (await db.query<{ brute_id: string; entered: boolean; unopened: number }>(
+    `select brute_id, bool_or(day = $2) entered, sum(jsonb_array_length(rounds) - rounds_opened)::int unopened
+       from classic_tournaments where brute_id = any($1::bigint[]) group by brute_id`, [rows.map((r) => r.id), classicDay()])).rows;
+  const todo = new Map(todoRows.map((t) => [t.brute_id, t]));
+  return {
+    brutes: rows.map((b) => ({
+      ...summary(b, s, rec.get(b.id) ?? emptyRecord),
+      attributes: attributes(describe(b.seed_id, b.level_ups, choicesOf(b))),
+      enteredToday: todo.get(b.id)?.entered ?? false,
+      roundsToOpen: todo.get(b.id)?.unopened ?? 0,
+    })),
+    maxBrutes: limit, maxImportLevel: role === "admin" ? ADMIN_MAX_LEVEL : Math.max(1, s.maxImportLevel),
+  };
 }
 
 export async function createBrute(db: Db, userId: string, body: unknown, role: string = "player") {

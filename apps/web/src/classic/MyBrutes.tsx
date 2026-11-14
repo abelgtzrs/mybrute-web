@@ -41,6 +41,10 @@ export function MyBrutesPage() {
                   {b.pendingLevelUp
                     ? <span className="badge gold">Level-up waiting</span>
                     : <FightPips left={b.fightsLeft} total={b.dailyFights} />}
+                  {/* tournament to-do: unwatched rounds first, since entering a new one opens them anyway */}
+                  {(b.roundsToOpen ?? 0) > 0
+                    ? <span className="badge gold">{b.roundsToOpen} {b.roundsToOpen === 1 ? "round" : "rounds"} to watch</span>
+                    : b.enteredToday === false && <span className="badge gold">Tournament open</span>}
                   <span className="roster-record">{b.record.wins} wins, {b.record.losses} losses{b.record.draws ? `, ${b.record.draws} draws` : ""}</span>
                 </span>
               </Link>

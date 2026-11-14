@@ -20,6 +20,22 @@ const list = async (p: Player, id: string) => (await p.call("GET", `/api/brutes/
 const tournamentFights = async () => Number((await h.db.query("select count(*) c from fights where tournament_id is not null")).rows[0].c);
 const SURE_WIN = 499; // a level-500 brute against level 10–200 NPCs
 
+describe("to-do status in the brute list", () => {
+  it("shows whether today's tournament is entered and how many rounds are left to open", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, SURE_WIN); // a sure champion: 4 rounds in a 16 bracket
+    const mine = async () => (await p.call("GET", "/api/brutes")).body.brutes[0];
+    expect(await mine()).toMatchObject({ enteredToday: false, roundsToOpen: 0 });
+
+    const t = (await enter(p, b.id)).body.tournament;
+    expect(await mine()).toMatchObject({ enteredToday: true, roundsToOpen: 4 });
+    await open(p, b.id, t.id, { round: 1 });
+    expect(await mine()).toMatchObject({ roundsToOpen: 3 });
+    await open(p, b.id, t.id, { all: true });
+    expect(await mine()).toMatchObject({ enteredToday: true, roundsToOpen: 0 });
+  });
+});
+
 describe("entering", () => {
   it("enters once a day and refuses a second entry without opening anything", async () => {
     const { p, b } = await setup();

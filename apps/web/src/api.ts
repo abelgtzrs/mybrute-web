@@ -43,7 +43,13 @@ export interface BruteSummary {
   id: string; name: string; seedId: number; gfx: string; level: number; levelUps: number;
   xp: number; xpRequired: number; pendingLevelUp: boolean; fightsLeft: number; dailyFights: number;
   record: { fights: number; wins: number; losses: number; draws: number }; createdAt: string; attributes?: Attributes;
+  // only in the brute list (GET /api/brutes): today's tournament entered? unopened rounds from any day?
+  enteredToday?: boolean; roundsToOpen?: number;
 }
+
+/** A brute still has something to do today: fights left, a level-up, today's tournament, or rounds to watch. */
+export const hasSomethingToDo = (b: BruteSummary) =>
+  b.pendingLevelUp || b.fightsLeft > 0 || b.enteredToday === false || (b.roundsToOpen ?? 0) > 0;
 export interface FightListItem {
   id: string; createdAt: string; result: FightResult; xpAwarded: number; level: number;
   opponent: { name: string; level: number; gfx: string }; damageDealt: number; damageReceived: number;
