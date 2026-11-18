@@ -1,0 +1,109 @@
+<style>
+  .phones { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; margin: 18px 0 8px; }
+  .pick { cursor: pointer; border: 2px solid transparent; border-radius: 18px; padding: 10px; width: 276px; }
+  .pick.selected { border-color: #f2a93b; }
+  .pick h3 { margin: 0 0 2px; }
+  .pick > p { margin: 0 0 10px; font-size: 13px; opacity: .8; min-height: 54px; }
+  .ph { width: 252px; height: 520px; border-radius: 22px; border: 3px solid #283a3e; background: #0b1213; color: #d3ded8;
+        font: 11px/1.35 ui-monospace, Consolas, monospace; display: flex; flex-direction: column; overflow: hidden; }
+  .ph * { box-sizing: border-box; }
+  .top { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid #283a3e; font-weight: 700; }
+  .play { background: #f2a93b; color: #0b1213; border-radius: 3px; padding: 3px 9px; font-weight: 700; }
+  .body { flex: 1; overflow: hidden; padding: 8px 10px; display: flex; flex-direction: column; gap: 7px; }
+  .nav { display: flex; border-top: 1px solid #283a3e; }
+  .nav span { flex: 1; text-align: center; padding: 9px 0; font-weight: 700; color: #8fa39c; }
+  .nav .on { color: #0b1213; background: #f2a93b; }
+  .box { border: 1px solid #283a3e; background: #121b1d; border-radius: 3px; padding: 6px 8px; }
+  .id { display: flex; gap: 8px; align-items: center; }
+  .face { width: 46px; height: 62px; border-radius: 3px; background: linear-gradient(#f5c26b, #c9722e); flex: none; }
+  .face.sm { width: 30px; height: 40px; }
+  .name { font-size: 15px; font-weight: 700; color: #fff; }
+  .dim { color: #8fa39c; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; }
+  .stats b { display: block; color: #f2a93b; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { border: 1px solid #283a3e; border-radius: 3px; padding: 1px 6px; }
+  .w { color: #d99b63; } .s { color: #7fb3e6; } .p { color: #8fd08a; }
+  .btns { display: flex; gap: 4px; flex-wrap: wrap; }
+  .b { border: 1px solid #3c5257; border-radius: 3px; padding: 3px 7px; }
+  .tabs { display: flex; border-bottom: 1px solid #283a3e; }
+  .tabs span { flex: 1; text-align: center; padding: 6px 0; color: #8fa39c; font-weight: 700; }
+  .tabs .on { color: #f2a93b; border-bottom: 2px solid #f2a93b; }
+  .strip { display: flex; gap: 5px; align-items: center; }
+  .strip i { width: 26px; height: 32px; border-radius: 3px; background: linear-gradient(#f5c26b, #c9722e); border: 2px solid #4f9fe0; opacity: .55; }
+  .strip i.r { border-color: #e5594a; } .strip i.on { opacity: 1; outline: 2px solid #f2a93b; }
+  .lv { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .lv span { border: 1px solid #283a3e; border-radius: 3px; padding: 4px 6px; }
+  .lv .on { border-color: #f2a93b; background: #33301f; }
+  .h { font-weight: 700; color: #fff; display: flex; justify-content: space-between; }
+  .fade { margin-top: auto; text-align: center; color: #5d706a; }
+</style>
+
+<h2>The Brute screen: how should it be laid out?</h2>
+<p class="subtitle">The brute is the home screen of the mobile Lab. All three versions show the same information and the same four bottom tabs
+(Brute, Teams, Fight, Bench). They differ in how you move through a brute's details and how you switch between brutes. Click the one that feels right.</p>
+
+<div class="phones">
+
+  <div class="pick" data-choice="a-long-scroll" onclick="toggleSelect(this)">
+    <h3>A. One long page</h3>
+    <p>Everything about the brute in one scroll: identity, stats, kit, inventory, then level-ups. You switch brutes on the Teams tab.</p>
+    <div class="ph">
+      <div class="top"><span>New fight</span><span>&#9881; &nbsp;<span class="play">&#9654; Play</span></span></div>
+      <div class="body">
+        <div class="box id"><div class="face"></div><div><div class="name">47871698</div><div class="dim">Level 10 &middot; Id 47871698</div><div class="dim">Team 0 &middot; Normal stance</div></div></div>
+        <div class="btns"><span class="b">Appearance</span><span class="b">Bits</span><span class="b">Random id</span><span class="b">Find ID</span></div>
+        <div class="box stats"><span>HP<b>81</b></span><span>STR<b>12</b></span><span>AGI<b>2</b></span><span>SPD<b>12</b></span></div>
+        <div class="box"><div class="h">Weapons</div><div class="chips"><span class="chip w">Knife</span><span class="chip w">Hatchet</span></div>
+          <div class="h" style="margin-top:5px">Skills</div><div class="chips"><span class="chip s">6th Sense</span><span class="chip s">Hostility</span></div>
+          <div class="h" style="margin-top:5px">Pets</div><div class="chips"><span class="chip p">Dog B</span></div></div>
+        <div class="box"><div class="h">Inventory</div><div class="dim">original inventory panel</div></div>
+        <div class="box"><div class="h">Level-ups</div><div class="lv"><span class="on">6th Sense</span><span>+3 Life</span></div></div>
+        <div class="fade">&#8595; keeps scrolling: all level-ups, save, export</div>
+      </div>
+      <div class="nav"><span class="on">Brute</span><span>Teams</span><span>Fight</span><span>Bench</span></div>
+    </div>
+  </div>
+
+  <div class="pick" data-choice="b-pinned-tabs" onclick="toggleSelect(this)">
+    <h3>B. Pinned brute, tabs below</h3>
+    <p>The brute's portrait, id, level and stats stay on screen. Tabs under it switch between kit, level-ups, look and inventory. A strip at the top switches brutes.</p>
+    <div class="ph">
+      <div class="top"><span class="strip"><i class="on"></i><i class="r"></i><span class="dim">+</span></span><span>&#9881; &nbsp;<span class="play">&#9654; Play</span></span></div>
+      <div class="body">
+        <div class="box id"><div class="face"></div><div style="flex:1"><div class="name">47871698</div><div class="dim">Level 10 &middot; Id 47871698</div>
+          <div class="stats" style="margin-top:4px"><span>HP<b>81</b></span><span>STR<b>12</b></span><span>AGI<b>2</b></span><span>SPD<b>12</b></span></div></div></div>
+        <div class="tabs"><span>Kit</span><span class="on">Level-ups</span><span>Look</span><span>Items</span></div>
+        <div class="btns"><span class="b">Lock up to&hellip;</span><span class="b">Avoid</span><span class="b">Random</span></div>
+        <div class="dim">Lv 2</div><div class="lv"><span class="on">6th Sense</span><span>+3 Life</span></div>
+        <div class="dim">Lv 3</div><div class="lv"><span class="on">Weapon: Knife</span><span>+3 Agility</span></div>
+        <div class="dim">Lv 4</div><div class="lv"><span class="on">Pet: Dog B</span><span>+3 Agility</span></div>
+        <div class="dim">Lv 5</div><div class="lv"><span>Toughened Skin</span><span class="on">+3 Speed</span></div>
+        <div class="fade">stats above update as you change a choice</div>
+      </div>
+      <div class="nav"><span class="on">Brute</span><span>Teams</span><span>Fight</span><span>Bench</span></div>
+    </div>
+  </div>
+
+  <div class="pick" data-choice="c-sections" onclick="toggleSelect(this)">
+    <h3>C. Folding sections</h3>
+    <p>One page like A, but each part folds shut, so you open only what you're working on. A strip at the top switches brutes.</p>
+    <div class="ph">
+      <div class="top"><span class="strip"><i class="on"></i><i class="r"></i><span class="dim">+</span></span><span>&#9881; &nbsp;<span class="play">&#9654; Play</span></span></div>
+      <div class="body">
+        <div class="box id"><div class="face"></div><div><div class="name">47871698</div><div class="dim">Level 10 &middot; Id 47871698</div><div class="dim">Team 0 &middot; Normal stance</div></div></div>
+        <div class="box stats"><span>HP<b>81</b></span><span>STR<b>12</b></span><span>AGI<b>2</b></span><span>SPD<b>12</b></span></div>
+        <div class="box"><div class="h"><span>&#9662; Weapons, skills, pets</span><span class="dim">5</span></div>
+          <div class="chips" style="margin-top:4px"><span class="chip w">Knife</span><span class="chip w">Hatchet</span><span class="chip s">6th Sense</span><span class="chip s">Hostility</span><span class="chip p">Dog B</span></div></div>
+        <div class="box"><div class="h"><span>&#9656; Level-ups</span><span class="dim">9 choices</span></div></div>
+        <div class="box"><div class="h"><span>&#9656; Appearance &amp; bits</span><span class="dim"></span></div></div>
+        <div class="box"><div class="h"><span>&#9656; Inventory</span><span class="dim"></span></div></div>
+        <div class="box"><div class="h"><span>&#9656; Save &amp; export</span><span class="dim"></span></div></div>
+      </div>
+      <div class="nav"><span class="on">Brute</span><span>Teams</span><span>Fight</span><span>Bench</span></div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle">These are wireframes for layout only. Colours follow the Lab's current Slate theme, and the orange blocks stand in for the real portraits.</p>

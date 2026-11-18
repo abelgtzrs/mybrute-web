@@ -171,6 +171,8 @@
 .lab.term .stat-row div { background: none; padding: 0 10px 0 0; }
 .lab.term .stat-row div + div { padding-left: 10px; border-left: 1px solid var(--paper-edge); }
 .lab.term .avoid { background: none; border: 0; border-left: 2px solid var(--paper-edge); border-radius: 0; padding: 2px 0 2px 12px; }
+/* the avoid popover floats over the editor: keep it a solid, bordered box (the flat rule above is for inline avoid lists) */
+.lab.term .avoid.avoid-popover { background: var(--paper); border: 1px solid var(--paper-edge); border-radius: var(--radius-panel); padding: 10px; }
 .lab.term .bench-item { background: none; border-top: 1px solid var(--paper-edge); border-radius: 0; padding: 6px 0; }
 .lab.term .bench-list { gap: 0; }
 .lab.term .support { background: var(--paper-lo); }

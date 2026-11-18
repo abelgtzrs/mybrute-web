@@ -59,6 +59,33 @@ npm run start -w @mybrute/server               # applies migrations, then serves
 
 | `ADMIN_USERNAMES` | comma-separated usernames that are admins (applied at startup and when they register) |
 
+### Deploy on Railway
+
+Railway builds from GitHub, runs the server, and provides Postgres and an HTTPS address. Nothing in
+the repo is Railway-specific; these settings live in its dashboard.
+
+1. Create a project at [railway.com](https://railway.com) and choose **Deploy from GitHub repo**. Pick this repo and the `main` branch.
+2. In the same project, add a **PostgreSQL** database.
+3. In the app service's **Settings**, set:
+   - Build command: `npm run build`
+   - Start command: `npm run start -w @mybrute/server`
+   - Healthcheck path: `/`
+4. In the app service's **Variables**, add:
+
+   | Variable | Value |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (a reference to the database from step 2) |
+   | `NODE_ENV` | `production` |
+   | `COOKIE_SECURE` | `1` |
+   | `HOST` | `0.0.0.0` |
+   | `ADMIN_USERNAMES` | the username you will register with |
+
+   Leave `PORT` unset: Railway supplies it.
+5. In **Settings → Networking**, generate a public domain. That HTTPS address is the game.
+6. Open it and register the `ADMIN_USERNAMES` account. It gets the Admin and Laboratory links.
+
+Every push to `main` redeploys. Migrations run on each start.
+
 ## Admin tools
 
 Admins get an **Admin** link in the menu (`/admin`). Make the first one from the command line, after

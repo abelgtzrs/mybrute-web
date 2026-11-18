@@ -20,8 +20,8 @@ interface Props {
   onNotify: (msg: string) => void;
 }
 
-/** Saved brute states, ready to drop into either team. */
-export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where, onImport, onNotify }: Props) {
+/** Saved brute states, ready to drop into either team. On desktop they open in a drawer from this button. */
+export function Bench(props: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -52,6 +52,24 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
       document.removeEventListener("keydown", key);
     };
   }, [isOpen]);
+  return (
+    <>
+    <button ref={btn} type="button" className="btn bench-open" aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => (isOpen ? close() : open())}>
+      Bench <span className="muted">{props.items.length} saved</span>
+    </button>
+    <dialog ref={ref} className="dialog drawer" aria-labelledby="bench-title">
+      <BenchList {...props} onDone={close} />
+    </dialog>
+    </>
+  );
+}
+
+/**
+ * The bench itself: sort, edit, add to a team, export, delete, import. The desktop drawer passes onDone
+ * (close the drawer after picking something, and show a Close button); the mobile Bench tab doesn't.
+ */
+export function BenchList({ items, takenIds, onUse, onDelete, onEdit, editing, where, onImport, onNotify, onDone }: Props & { onDone?: () => void }) {
+  const close = () => onDone?.();
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const doImport = () => {
@@ -64,27 +82,39 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
   const copy = (text: string, what: string) =>
     navigator.clipboard.writeText(text).then(() => onNotify(`${what} copied.`), () => onNotify("Couldn't reach the clipboard."));
   const copyCode = (b: SpecBrute) => copy(exportBrute(b), "Brute code");
-  const copyAll = () => copy(exportBrutes(items.map((s) => s.brute)), `${items.length} brute codes`);
+  const [sort, setSort] = useState<"date" | "level" | "id" | "name">("date");
+  const sorted = [...items].sort((a, b) =>
+    sort === "date" ? b.savedAt.localeCompare(a.savedAt) // newest first
+    : sort === "level" ? b.brute.levelUps - a.brute.levelUps // highest first
+    : sort === "id" ? a.brute.id - b.brute.id
+    : a.brute.name.localeCompare(b.brute.name));
+  const copyAll = () => copy(exportBrutes(sorted.map((s) => s.brute)), `${items.length} brute codes`);
   return (
-    <>
-    <button ref={btn} type="button" className="btn bench-open" aria-haspopup="dialog" aria-expanded={isOpen} onClick={() => (isOpen ? close() : open())}>
-      Bench <span className="muted">{items.length} saved</span>
-    </button>
-    <dialog ref={ref} className="dialog drawer" aria-labelledby="bench-title">
     <section className="bench dialog-body">
       <div className="row bench-head">
         <h2 id="bench-title">Bench</h2>
         {items.length > 1 && (
           <button type="button" className="btn small ghost" title="Copy every saved brute's code, one per line" onClick={copyAll}>Export all</button>
         )}
-        <button type="button" className="btn small ghost" onClick={close}>Close</button>
+        {onDone && <button type="button" className="btn small ghost" onClick={close}>Close</button>}
       </div>
       <p className="hint">{where === "account" ? "Saved to your account." : "Saved in this browser. Sign in to keep Lab saves in your account."}</p>
+      {items.length > 1 && (
+        <label className="row">
+          Sort by{" "}
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+            <option value="date">Date added (newest)</option>
+            <option value="level">Level (highest)</option>
+            <option value="id">Id</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+      )}
       {items.length === 0 ? (
         <p className="muted">Save a brute from the editor to keep it here. You can put saved brutes back into any fight.</p>
       ) : (
         <ul className="bench-list">
-          {items.map((s) => {
+          {sorted.map((s) => {
             const inFight = takenIds.includes(s.brute.id);
             return (
               <li key={s.key} className={"bench-item" + (editing === s.key ? " editing" : "")}>
@@ -117,8 +147,6 @@ export function Bench({ items, takenIds, onUse, onDelete, onEdit, editing, where
         {codeError && <p className="field-error" role="alert" style={{ whiteSpace: "pre-line" }}>{codeError}</p>}
       </div>
     </section>
-    </dialog>
-    </>
   );
 }
 

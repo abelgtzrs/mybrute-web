@@ -17,7 +17,7 @@ import { LevelUpPage } from "./classic/LevelUp";
 import { MyBrutesPage } from "./classic/MyBrutes";
 import { OpponentsPage } from "./classic/Opponents";
 import { GuidePage } from "./guide/GuidePage";
-import { LabPage } from "./lab/LabPage";
+import { LabEntry, MobileLabPage } from "./lab/mobile/MobileLabPage";
 import { TournamentsPage } from "./tournaments/TournamentsPage";
 import { LanguagePicker } from "./ui/language";
 
@@ -57,7 +57,8 @@ export function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/lab" element={<RequireAdmin><LabPage /></RequireAdmin>} />
+          <Route path="/lab" element={<RequireAdmin><LabEntry /></RequireAdmin>} />
+          <Route path="/lab/mobile" element={<RequireAdmin><MobileLabPage /></RequireAdmin>} />
           <Route path="/tournaments" element={<RequireAdmin><TournamentsPage /></RequireAdmin>} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/guide/:page" element={<GuidePage />} />

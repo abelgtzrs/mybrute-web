@@ -9,7 +9,9 @@
 @media (max-width: 699px) {
   .masthead { padding: 8px 12px; gap: 10px; }
   .wordmark { font-size: 21px; }
-  .masthead nav { gap: 12px; font-size: 14px; }
+  /* admins have three more links than fit: the row scrolls sideways instead of widening the page */
+  .masthead nav { gap: 12px; font-size: 14px; min-width: 0; overflow-x: auto; }
+  .masthead nav > * { flex: none; }
   .account .muted { display: none; }
   .nav-long { display: none; }
   .nav-short { display: inline; }
@@ -163,6 +165,12 @@
    Sizes come from the card's own width (cqi), so the layout keeps its proportions at any screen size. */
 .opponent-grid { list-style: none; margin: 0; padding: 4px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: start; }
 .opponent-grid > li { container-type: inline-size; }
+/* a card scales with its own width, so narrower screens get fewer columns instead of unreadable cards */
+@media (max-width: 1099px) { .opponent-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 699px) {
+  .opponent-grid { grid-template-columns: minmax(0, 1fr); }
+  .opponent .opponent-fight.btn.play { min-height: 40px; }
+}
 /* the card's own spacing is in px: cq units on the card itself would measure the page, not the card */
 .opponent.panel { padding: 8px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 
