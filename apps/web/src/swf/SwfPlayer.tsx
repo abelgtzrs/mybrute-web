@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ruffleReady, SWF_BASE, type RufflePlayerElement } from "./ruffle";
 
 interface Props {
@@ -9,7 +9,9 @@ interface Props {
   /** what the player shows, for screen readers and error text */
   label: string;
   className?: string;
-  /** only client.swf needs this, so its _end javascript: URL can signal the page */
+  /** fixed pixel size for SWFs that don't scale (tournoi.swf) */
+  style?: CSSProperties;
+  /** client.swf (its _end javascript: URL) and tournoi.swf (its getURL click) need this */
   allowScript?: boolean;
   /** don't create a player until the element is on screen (perso previews in long lists) */
   lazy?: boolean;
@@ -21,7 +23,7 @@ interface Props {
  * One Ruffle instance per mounted component. A new `params` value reloads the same instance;
  * unmounting removes it. StrictMode's mount → unmount → mount simply creates a fresh player.
  */
-export function SwfPlayer({ swf, params, label, className, allowScript = false, lazy = false, transparent = false }: Props) {
+export function SwfPlayer({ swf, params, label, className, style, allowScript = false, lazy = false, transparent = false }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const player = useRef<RufflePlayerElement | null>(null);
   const [visible, setVisible] = useState(!lazy);
@@ -70,7 +72,7 @@ export function SwfPlayer({ swf, params, label, className, allowScript = false, 
   }, [visible, swf, params, allowScript, label, transparent]);
 
   return (
-    <div className={"swf " + (className ?? "")} role="img" aria-label={label}>
+    <div className={"swf " + (className ?? "")} style={style} role="img" aria-label={label}>
       <div ref={host} className="swf-host" />
       {error && <p className="swf-error">{error}</p>}
     </div>

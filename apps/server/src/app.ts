@@ -3,13 +3,18 @@ import { join } from "node:path";
 import Fastify, { type FastifyInstance } from "fastify";
 import cookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
-import { adminRoutes } from "./admin";
+import { adminRoutes, requireAdmin } from "./admin";
 import { authPlugin, requireUser } from "./auth";
 import * as classic from "./classic";
 import type { Db } from "./db";
 import { HttpError } from "./errors";
 import * as lab from "./lab";
+import * as ranked from "./ranked";
 import * as tournaments from "./tournaments";
+
+/** Vite's build output (assets/*) and Ruffle's core files (ruffle/*.<20 hex>.wasm|js) carry a content hash in their name;
+ *  the path may end in .br/.gz when the compressed copy is sent. */
+const HASHED_FILE = /[\\/](assets[\\/][^\\/]+|ruffle[\\/][^\\/]*[0-9a-f]{20}\.(wasm|js)(\.br|\.gz)?)$/;
 
 export interface AppOptions { db: Db; webDist?: string | null; logger?: boolean }
 
@@ -28,27 +33,35 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   await app.register(authPlugin, { db });
 
   type P = { Params: { id: string } };
-  app.get("/api/brutes", async (req) => classic.listBrutes(db, requireUser(req).id));
-  app.post("/api/brutes", async (req, reply) => { reply.code(201); return classic.createBrute(db, requireUser(req).id, req.body); });
-  app.get<P>("/api/brutes/:id", async (req) => classic.getCell(db, requireUser(req).id, req.params.id));
+  app.get("/api/brutes", async (req) => classic.listBrutes(db, requireUser(req).id, requireUser(req).role));
+  app.post("/api/brutes", async (req, reply) => { reply.code(201); return classic.createBrute(db, requireUser(req).id, req.body, requireUser(req).role); });
+  app.get<P>("/api/brutes/:id", async (req) => classic.getCell(db, requireUser(req).id, req.params.id, requireUser(req).role));
+  app.put<P>("/api/brutes/:id/appearance", async (req) => classic.changeAppearance(db, requireUser(req).id, req.params.id, req.body, requireUser(req).role));
   app.delete<P>("/api/brutes/:id", async (req) => classic.deleteBrute(db, requireUser(req).id, req.params.id));
   app.post<P>("/api/brutes/:id/opponents", async (req) => classic.newOpponents(db, requireUser(req).id, req.params.id));
   app.post<P>("/api/brutes/:id/fights", async (req) => classic.startFight(db, requireUser(req).id, req.params.id, req.body));
   app.get<P & { Querystring: { page?: string; result?: string } }>("/api/brutes/:id/fights", async (req) =>
     classic.listFights(db, requireUser(req).id, req.params.id, { page: Number(req.query.page) || 1, result: req.query.result }));
   app.post<P>("/api/brutes/:id/level-up", async (req) => classic.levelUp(db, requireUser(req).id, req.params.id, req.body));
+  type T = { Params: { id: string; tid: string } };
+  app.post<P>("/api/brutes/:id/tournament", async (req) => ranked.enterTournament(db, requireUser(req).id, req.params.id));
+  app.get<P & { Querystring: { page?: string } }>("/api/brutes/:id/tournaments", async (req) =>
+    ranked.listBruteTournaments(db, requireUser(req).id, req.params.id, Number(req.query.page) || 1));
+  app.get<T>("/api/brutes/:id/tournaments/:tid", async (req) => ranked.getBruteTournament(db, requireUser(req).id, req.params.id, req.params.tid));
+  app.post<T>("/api/brutes/:id/tournaments/:tid/open", async (req) => ranked.openRounds(db, requireUser(req).id, req.params.id, req.params.tid, req.body));
+  app.post<P>("/api/brutes/:id/time-capsule", async (req) => ranked.useTimeCapsule(db, requireUser(req).id, req.params.id, req.body));
   app.get<P>("/api/fights/:id", async (req) => classic.getFight(db, requireUser(req).id, req.params.id));
 
-  app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireUser(req).id));
-  app.post("/api/lab/payloads", async (req, reply) => { reply.code(201); return lab.savePayload(db, requireUser(req).id, req.body); });
-  app.delete<P>("/api/lab/payloads/:id", async (req) => lab.deletePayload(db, requireUser(req).id, req.params.id));
-  app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireUser(req).id));
-  app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireUser(req).id, req.body); });
-  app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireUser(req).id, req.params.id));
-  app.get("/api/tournaments", async (req) => tournaments.listTournaments(db, requireUser(req).id));
-  app.post("/api/tournaments", { bodyLimit: 512 * 1024 }, async (req, reply) => { reply.code(201); return tournaments.saveTournament(db, requireUser(req).id, req.body); });
-  app.post<P>("/api/tournaments/:id", { bodyLimit: 512 * 1024 }, async (req) => tournaments.saveTournament(db, requireUser(req).id, req.body, req.params.id));
-  app.delete<P>("/api/tournaments/:id", async (req) => tournaments.deleteTournament(db, requireUser(req).id, req.params.id));
+  app.get("/api/lab/payloads", async (req) => lab.listPayloads(db, requireAdmin(req).id));
+  app.post("/api/lab/payloads", async (req, reply) => { reply.code(201); return lab.savePayload(db, requireAdmin(req).id, req.body); });
+  app.delete<P>("/api/lab/payloads/:id", async (req) => lab.deletePayload(db, requireAdmin(req).id, req.params.id));
+  app.get("/api/lab/brutes", async (req) => lab.listLabBrutes(db, requireAdmin(req).id));
+  app.post("/api/lab/brutes", async (req, reply) => { reply.code(201); return lab.saveLabBrute(db, requireAdmin(req).id, req.body); });
+  app.delete<P>("/api/lab/brutes/:id", async (req) => lab.deleteLabBrute(db, requireAdmin(req).id, req.params.id));
+  app.get("/api/tournaments", async (req) => tournaments.listTournaments(db, requireAdmin(req).id));
+  app.post("/api/tournaments", { bodyLimit: 512 * 1024 }, async (req, reply) => { reply.code(201); return tournaments.saveTournament(db, requireAdmin(req).id, req.body); });
+  app.post<P>("/api/tournaments/:id", { bodyLimit: 512 * 1024 }, async (req) => tournaments.saveTournament(db, requireAdmin(req).id, req.body, req.params.id));
+  app.delete<P>("/api/tournaments/:id", async (req) => tournaments.deleteTournament(db, requireAdmin(req).id, req.params.id));
 
   adminRoutes(app, db);
 
@@ -57,7 +70,16 @@ export async function buildApp({ db, webDist = null, logger = false }: AppOption
   // production: serve the built web app, with client-side routes falling back to index.html
   if (webDist && existsSync(join(webDist, "index.html"))) {
     const index = readFileSync(join(webDist, "index.html"), "utf8");
-    await app.register(fastifyStatic, { root: webDist, wildcard: false });
+    await app.register(fastifyStatic, {
+      root: webDist,
+      wildcard: false,
+      // send the .br/.gz copies written by apps/web/scripts/compress-dist.mjs when the browser accepts them
+      preCompressed: true,
+      // files with a content hash in their name never change, so browsers may keep them for a year without asking
+      setHeaders: (reply, path) => {
+        if (HASHED_FILE.test(path)) reply.header("cache-control", "public, max-age=31536000, immutable");
+      },
+    });
     app.setNotFoundHandler((req, reply) => {
       if (req.method !== "GET" || req.url.startsWith("/api/")) return reply.code(404).send({ error: "not_found", message: "Not found." });
       return reply.type("text/html").send(index);

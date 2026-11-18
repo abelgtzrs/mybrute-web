@@ -44,11 +44,23 @@ describe("opponent selection", () => {
     expect([row.xp, row.fights_used]).toEqual([0, 0]);
   });
 
-  it("drops unchosen offers from earlier visits", async () => {
+  it("drops unchosen offers from earlier visits, but keeps the previous list valid", async () => {
     const { p, b } = await setup();
     const first = await opponents(p, b.id);
+    const second = await opponents(p, b.id);
     await opponents(p, b.id);
     expect((await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: first[0].offerId })).status).toBe(404);
+    // a page still showing the previous list (e.g. it asked twice at once) can fight from it
+    expect((await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: second[0].offerId })).status).toBe(200);
+  });
+
+  it("keeps both lists usable when two requests arrive at once", async () => {
+    const { p, b } = await setup();
+    const [a, c] = await Promise.all([opponents(p, b.id), opponents(p, b.id)]);
+    for (const list of [a, c]) {
+      const n = (await h.db.query("select count(*)::int n from opponent_offers where id = any($1) and consumed_at is null", [list.map((o: { offerId: string }) => o.offerId)])).rows[0].n;
+      expect(n).toBe(8);
+    }
   });
 });
 
@@ -186,6 +198,8 @@ describe("lab saves", () => {
   it("keeps Lab saves per player and separate from Classic brutes", async () => {
     const { p } = await setup();
     const bob = await Player.register(h.app, "bob");
+    expect((await p.call("GET", "/api/lab/brutes")).status).toBe(403);
+    await h.db.query("update users set role = 'admin' where username in ('alice', 'bob')");
     const saved = await p.call("POST", "/api/lab/brutes", { label: "Copy", brute: { name: "Hero", id: 18327968, team: 0, levelUps: 3, gfx: "0;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0", choices: [1, 0, 1], avoid: ["Weapons:AXE"] } });
     expect(saved.status).toBe(201);
     expect((await p.call("GET", "/api/lab/brutes")).body.items).toHaveLength(1);
@@ -214,3 +228,75 @@ describe("importing a Lab brute", () => {
 });
 
 void pendingOptions; void hexToChoices;
+
+describe("appearance", () => {
+  const newLook = "1;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16";
+  it("lets a player change the appearance once, then refuses", async () => {
+    const { p, b } = await setup();
+    const first = await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: newLook });
+    expect(first.status).toBe(200);
+    expect((await bruteRow(b.id)).gfx).toBe(newLook);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.canChangeAppearance).toBe(false);
+    const second = await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "0;0;1;2;3;4;5;6;7;8;9;10;11;12;13;14" });
+    expect(second.status).toBe(409);
+    expect((await bruteRow(b.id)).gfx).toBe(newLook);
+  });
+
+  it("lets an admin change it again and again without using up the player's change", async () => {
+    const { p, b } = await setup();
+    await h.db.query("update users set role = 'admin' where username = 'alice'");
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: newLook })).status).toBe(200);
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "2;2;3;4;5;6;7;8;9;10;11;12;13;14;15;16" })).status).toBe(200);
+    expect((await bruteRow(b.id)).appearance_changes).toBe(0);
+  });
+
+  it("refuses an appearance that is not valid", async () => {
+    const { p, b } = await setup();
+    expect((await p.call("PUT", `/api/brutes/${b.id}/appearance`, { gfx: "nope" })).status).toBe(400);
+  });
+});
+
+describe("ranks and caps", () => {
+  it("starts brutes at rank 0, flags brutes an admin creates, and keeps the flag after demotion", async () => {
+    const { p, b } = await setup();
+    const cell = (await p.call("GET", `/api/brutes/${b.id}`)).body.brute;
+    expect(cell.rank.rank).toBe(0);
+    expect(cell.adminBrute).toBe(false);
+    await h.db.query("update users set role = 'admin' where username = 'alice'");
+    const second = await p.newBrute("Boss", 4242);
+    expect((await p.call("GET", `/api/brutes/${second.id}`)).body.brute.adminBrute).toBe(true);
+    await h.db.query("update users set role = 'player' where username = 'alice'");
+    expect((await p.call("GET", `/api/brutes/${second.id}`)).body.brute.adminBrute).toBe(true);
+  });
+
+  it("banks XP at the cap without a waiting level-up, and fights stay allowed", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, 19); // level 20 = rank 0 cap
+    await h.db.query("update brutes set xp = 100 where id = $1", [b.id]);
+    const [o] = await opponents(p, b.id);
+    const r = await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: o.offerId });
+    expect(r.status).toBe(200);
+    const row = await bruteRow(b.id);
+    expect(row.pending_level_up).toBe(false);
+    expect([101, 102]).toContain(row.xp);
+    expect((await p.call("GET", `/api/brutes/${b.id}`)).body.brute.banked).toBe(true);
+  });
+
+  it("refuses a level-up at the cap", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, 19);
+    await h.db.query("update brutes set xp = 100, pending_level_up = true where id = $1", [b.id]);
+    const r = await p.call("POST", `/api/brutes/${b.id}/level-up`, { index: 19, choice: 0 });
+    expect(r.status).toBe(409);
+    expect(r.body.error).toBe("level_cap");
+  });
+
+  it("lets an admin brute level past the cap", async () => {
+    const { p, b } = await setup();
+    await raise(b.id, 19);
+    await h.db.query("update brutes set xp = 100, admin_brute = true where id = $1", [b.id]);
+    const [o] = await opponents(p, b.id);
+    await p.call("POST", `/api/brutes/${b.id}/fights`, { offerId: o.offerId });
+    expect((await bruteRow(b.id)).pending_level_up).toBe(true);
+  });
+});

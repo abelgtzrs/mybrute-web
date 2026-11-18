@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { describe, displayLevel, isValidSeedId, randomGfx, randomLabId } from "@mybrute/engine";
+import { describe, displayLevel, isValidSeedId, randomChoices, randomGfx, randomLabId } from "@mybrute/engine";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { accountLabStore, browserLabStore, type SavedBrute } from "../lab/storage";
@@ -11,7 +11,8 @@ import { GfxEditor } from "../ui/GfxEditor";
 
 export function CreateBrutePage() {
   const nav = useNavigate();
-  const { refresh } = useAuth();
+  const { refresh, user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [name, setName] = useState("");
   const [idText, setIdText] = useState(() => String(randomLabId()));
   const [gfx, setGfx] = useState(() => randomGfx());
@@ -26,11 +27,13 @@ export function CreateBrutePage() {
   const cap = useApi(() => api.brutes(), []).data?.maxImportLevel ?? 1;
   const [source, setSource] = useState<SavedBrute | null>(null);
   const [levelText, setLevelText] = useState("1");
-  const maxLevel = source ? Math.min(cap, displayLevel(source.brute.levelUps)) : 1;
+  // admins may start any brute at any level (the server's cap); a fresh brute's level-up choices are random
+  const [randomPicks] = useState(() => randomChoices(499));
+  const maxLevel = source ? Math.min(cap, displayLevel(source.brute.levelUps)) : isAdmin ? cap : 1;
   const level = /^\d+$/.test(levelText) ? Number(levelText) : NaN;
   const validLevel = level >= 1 && level <= maxLevel;
   const levelUps = validLevel ? level - 1 : 0;
-  const choices = source ? source.brute.choices.slice(0, levelUps) : [];
+  const choices = source ? source.brute.choices.slice(0, levelUps) : randomPicks.slice(0, levelUps);
   const importFrom = (key: string) => {
     const s = saved.find((x) => x.key === key) ?? null;
     setSource(s);
@@ -85,16 +88,17 @@ export function CreateBrutePage() {
                   {saved.map((s) => <option key={s.key} value={s.key}>{s.label} (level {displayLevel(s.brute.levelUps)})</option>)}
                 </select>
               </label>
-              {source && (
-                <label>Level
-                  <input value={levelText} inputMode="numeric" className={validLevel ? "" : "invalid"} aria-invalid={!validLevel} onChange={(e) => setLevelText(e.target.value.trim())} />
-                </label>
-              )}
               {source && <p className="hint">{maxLevel > 1
                 ? `Its level-up choices are replayed up to the level you pick, from 1 to ${maxLevel}${cap < displayLevel(source.brute.levelUps) ? " (the highest level allowed for imports)" : ""}.`
                 : "Imports start at level 1 for now. It keeps this brute's id and look, and you make its level-up choices again as it levels."}</p>}
             </div>
           )}
+          {(source || isAdmin) && (
+            <label>Level
+              <input value={levelText} inputMode="numeric" className={validLevel ? "" : "invalid"} aria-invalid={!validLevel} onChange={(e) => setLevelText(e.target.value.trim())} />
+            </label>
+          )}
+          {!source && isAdmin && <p className="hint">As an admin you can start this brute at any level up to {cap}. Its level-up choices are random; its id still decides what the game offers at each level.</p>}
           <label>Name
             <input value={name} required minLength={2} maxLength={20} autoFocus placeholder="2 to 20 characters" onChange={(e) => setName(e.target.value)} />
           </label>

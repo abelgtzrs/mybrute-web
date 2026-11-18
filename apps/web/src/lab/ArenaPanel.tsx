@@ -24,7 +24,7 @@ type Tab = "log" | "stats" | "achievements";
 const TABS: [Tab, string][] = [["log", "Action log"], ["stats", "Statistics"], ["achievements", "Achievements"]];
 
 /** The engine awards these at the end of a fight (Arena.endFight): id, name, team counter and the value that earns it. */
-const ACHIEVEMENTS: { id: string; name: string; stat: (typeof TEAM_STATS)[number] | null; min: number; what: string }[] = [
+export const ACHIEVEMENTS: { id: string; name: string; stat: (typeof TEAM_STATS)[number] | null; min: number; what: string }[] = [
   { id: "perfec", name: "Perfect", stat: null, min: 0, what: "The winning main brute finishes at full life" },
   { id: "dodge", name: "Dodger", stat: "DODGE", min: 10, what: "10 or more dodges" },
   { id: "parade", name: "Parry master", stat: "PARADE", min: 20, what: "20 or more blocks" },
@@ -86,7 +86,7 @@ export function ArenaPanel({ spec, descs, sim, stats, pets, errors, playback, on
   );
 }
 
-function Achievements({ spec, sim }: { spec: FightSpec; sim: EngineResult }) {
+export function Achievements({ spec, sim }: { spec: FightSpec; sim: EngineResult }) {
   const teams = [0, 1] as const;
   const earned = (t: 0 | 1, id: string) => sim.achievements?.[t]?.includes(id) ?? false;
   const counter = (t: 0 | 1, stat: string | null) => (stat ? String(sim.teamStats?.[t]?.[TEAM_STATS.indexOf(stat as (typeof TEAM_STATS)[number])] ?? 0) : "–");
@@ -122,7 +122,7 @@ function Achievements({ spec, sim }: { spec: FightSpec; sim: EngineResult }) {
   );
 }
 
-function ActionLog({ spec, descs, sim, notify }: { spec: FightSpec; descs: (Description | null)[]; sim: EngineResult; notify: (m: string) => void }) {
+export function ActionLog({ spec, descs, sim, notify }: { spec: FightSpec; descs: (Description | null)[]; sim: EngineResult; notify: (m: string) => void }) {
   const { lang } = useLanguage();
   const [moves, setMoves] = useState(false);
   const lines = useMemo(() => {

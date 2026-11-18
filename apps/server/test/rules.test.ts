@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { bruteNameProblem, classicDay, fightsUsedToday, isPending, requiredXp, xpFor } from "../src/rules";
+import {
+  bracketSize,
+  bruteNameProblem,
+  capFor,
+  classicDay,
+  fightsUsedToday,
+  isWaiting,
+  RANKS,
+  rankInfo,
+  requiredXp,
+  titleXp,
+  xpFor,
+} from "../src/rules";
 
 describe("Classic rules", () => {
   it("requires level * 2 XP", () => {
@@ -9,13 +21,6 @@ describe("Classic rules", () => {
 
   it("awards 2 XP for a win and 1 for a loss or a draw", () => {
     expect([xpFor("win"), xpFor("loss"), xpFor("draw")]).toEqual([2, 1, 1]);
-  });
-
-  it("marks a level-up as pending once the requirement is met, without levelling", () => {
-    expect(isPending(1, 1)).toBe(false);
-    expect(isPending(2, 1)).toBe(true);
-    expect(isPending(3, 1)).toBe(true); // carry-over
-    expect(isPending(5, 3)).toBe(false);
   });
 
   it("uses Bordeaux days, including the summer-time offset", () => {
@@ -37,5 +42,40 @@ describe("Classic rules", () => {
     expect(bruteNameProblem("x")).not.toBeNull();
     expect(bruteNameProblem("<script>")).not.toBeNull();
     expect(bruteNameProblem(" ")).not.toBeNull();
+  });
+});
+
+describe("ranks", () => {
+  it("has 12 ranks whose NPC ranges sit below their caps", () => {
+    expect(RANKS.length).toBe(12);
+    for (const rank of RANKS) {
+      expect(rank.npcMin).toBeLessThanOrEqual(rank.npcMax);
+      expect(rank.npcMax).toBeLessThan(rank.cap);
+    }
+    expect(RANKS[11].titlesNeeded).toBeNull(); // top rank has nothing to climb to
+    expect(RANKS.slice(0, 11).map((r) => r.titlesNeeded)).toEqual([3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5]);
+  });
+
+  it("sizes brackets by titles and caps them at 256", () => {
+    expect(bracketSize(0)).toBe(16);
+    expect(bracketSize(2)).toBe(64);
+    expect(bracketSize(4)).toBe(256);
+    expect(bracketSize(9)).toBe(256);
+  });
+
+  it("pays 5, 10, 15, 20, 25 XP for titles, then 25", () => {
+    expect([0, 1, 2, 3, 4, 5, 40].map(titleXp)).toEqual([5, 10, 15, 20, 25, 25, 25]);
+  });
+
+  it("only waits for a level-up below the cap", () => {
+    expect(isWaiting(40, 19, 20)).toBe(true);
+    expect(isWaiting(999, 20, 20)).toBe(false);
+    expect(isWaiting(999, 25, capFor(0, true))).toBe(true);
+  });
+
+  it("gives admin brutes no cap", () => {
+    expect(capFor(0, false)).toBe(20);
+    expect(capFor(0, true)).toBe(Infinity);
+    expect(rankInfo(0, 0, true).cap).toBeNull();
   });
 });

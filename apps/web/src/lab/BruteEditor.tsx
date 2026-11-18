@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   bitsToB64,
   bitsToHex,
@@ -25,17 +25,12 @@ import {
   InventoryPanel,
   useInventorySettings,
 } from "../ui/InventoryPanel";
-import { GfxEditor } from "../ui/GfxEditor";
+import { LookEditor } from "./LookEditor";
 import { CommitInput, parseIntStrict } from "../ui/CommitInput";
 import { useNames } from "../ui/language";
 import { exportBrute } from "./bruteCode";
 
-type Extra = "look" | "bits";
-const EXTRAS: [Extra, string][] = [
-  ["look", "Appearance"],
-  ["bits", "Bits"],
-];
-const STANCES: [number | null, string][] = [
+export const STANCES: [number | null, string][] = [
   [null, "Normal stance"],
   [0, "Stance 0"],
   [1, "Stance 1"],
@@ -92,7 +87,8 @@ export function BruteEditor({
 }: Props) {
   const card = useRef<HTMLElement>(null);
   const [target, setTarget] = useState<SaveTarget>(saveTargets[0][0]);
-  const [extra, setExtra] = useState<Extra | null>(null);
+  const [showBits, setShowBits] = useState(false);
+  const [showLook, setShowLook] = useState(false);
   const [stanceError, setStanceError] = useState("");
   const [copied, setCopied] = useState("");
   const { stance } = destiny(brute.id);
@@ -201,18 +197,23 @@ export function BruteEditor({
                     ))}
                   </select>
                 </label>
-                {EXTRAS.map(([k, label]) => (
-                  <button
-                    key={k}
-                    type="button"
-                    className="btn small ghost"
-                    aria-expanded={extra === k}
-                    aria-controls="editor-extra"
-                    onClick={() => setExtra(extra === k ? null : k)}
-                  >
-                    {label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  aria-haspopup="dialog"
+                  onClick={() => setShowLook(true)}
+                >
+                  Appearance
+                </button>
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  aria-expanded={showBits}
+                  aria-controls="editor-extra"
+                  onClick={() => setShowBits(!showBits)}
+                >
+                  Bits
+                </button>
               </div>
               {stanceError && (
                 <p className="field-error" role="alert">
@@ -221,13 +222,11 @@ export function BruteEditor({
               )}
             </div>
           </div>
-          {extra && (
+          {/* outside the toolbar row above, whose compact control styles would otherwise reach into the dialog */}
+          <AppearanceDialog brute={brute} update={update} open={showLook} onClose={() => setShowLook(false)} />
+          {showBits && (
             <div id="editor-extra" className="editor-extra">
-              {extra === "look" ? (
-                <Appearance brute={brute} update={update} />
-              ) : (
-                <Bits brute={brute} update={update} />
-              )}
+              <Bits brute={brute} update={update} />
             </div>
           )}
           <div className="editor-line">
@@ -351,7 +350,7 @@ export function BruteEditor({
   );
 }
 
-function FindIdButton({
+export function FindIdButton({
   brute,
   takenIds,
   onPick,
@@ -422,7 +421,7 @@ function FindIdButton({
   );
 }
 
-function BruteSummary({ desc, id }: { desc: Description; id: number }) {
+export function BruteSummary({ desc, id }: { desc: Description; id: number }) {
   const { name } = useNames();
   const f = desc.fin;
   // the category names match the engine's bonus kinds, so chips and level-up options share colours
@@ -512,7 +511,7 @@ function BruteSummary({ desc, id }: { desc: Description; id: number }) {
   );
 }
 
-function LevelUps({
+export function LevelUps({
   brute,
   desc,
   originalLevelUps,
@@ -917,17 +916,50 @@ export function AvoidRewards({
   );
 }
 
-function Appearance({
+/** The Appearance dialog: a large portrait that follows every change, beside the look editor. */
+function AppearanceDialog({
   brute,
   update,
+  open,
+  onClose,
 }: {
   brute: SpecBrute;
   update: (p: Partial<SpecBrute>) => void;
+  open: boolean;
+  onClose: () => void;
 }) {
-  return <GfxEditor gfx={brute.gfx} onChange={(gfx) => update({ gfx })} />;
+  const ref = useRef<HTMLDialogElement>(null);
+  const title = useId();
+  useEffect(() => {
+    if (open && !ref.current?.open) ref.current?.showModal();
+  }, [open]);
+  return (
+    <dialog
+      ref={ref}
+      className="dialog look-dialog"
+      aria-labelledby={title}
+      onClose={(e) => e.target === e.currentTarget && onClose()}
+    >
+      {/* the portrait (a Ruffle player) is only mounted while the dialog is open */}
+      {open && (
+        <section className="dialog-body">
+          <div className="row bench-head">
+            <h2 id={title}>Appearance: {brute.name}</h2>
+            <button type="button" className="btn small ghost" onClick={() => ref.current?.close()}>
+              Close
+            </button>
+          </div>
+          <div className="look-dialog-grid">
+            <Portrait gfx={brute.gfx} name={brute.name} lazy={false} className="look-dialog-portrait" />
+            <LookEditor gfx={brute.gfx} onChange={(gfx) => update({ gfx })} />
+          </div>
+        </section>
+      )}
+    </dialog>
+  );
 }
 
-function Bits({
+export function Bits({
   brute,
   update,
 }: {

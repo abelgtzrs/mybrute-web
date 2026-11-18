@@ -138,6 +138,8 @@ body {
   height: 100dvh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  /* the page is as wide as the screen, never as wide as a long masthead */
+  grid-template-columns: minmax(0, 1fr);
 }
 main {
   padding: 12px 16px;
@@ -187,6 +189,20 @@ main {
 }
 .masthead nav a.active {
   border-color: var(--gold);
+}
+/* count of brutes with something left to do today, on the "My brutes" link */
+.nav-badge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: 1px;
 }
 .masthead .lang-picker {
   width: auto;
@@ -638,7 +654,8 @@ label.wide {
   .workspace {
     grid-template-columns: minmax(0, 1fr);
   }
-  .workspace .col {
+  /* [data-panel] is here so this outranks the tablet rule above that shows the editor beside the teams */
+  .workspace[data-panel] .col {
     display: none;
   }
   .workspace[data-panel="teams"] .col-teams,
@@ -803,8 +820,8 @@ label.wide {
   color: var(--ink-3);
 }
 .tile-portrait {
-  width: 74px;
-  height: 104px;
+  width: calc(74px * var(--portrait-scale, 1));
+  height: calc(104px * var(--portrait-scale, 1));
   aspect-ratio: auto;
 }
 
@@ -1071,11 +1088,37 @@ label.wide {
   overscroll-behavior: contain;
 }
 
-/* phones: details above the inventory inside the top section */
+/* phones: details, inventory, then level-ups, all in the Brute tab's one scroll (no boxes that scroll
+   inside it, no height divider: a thumb can't tell nested scrollers apart) */
 @media (max-width: 699px) {
   .col-editor > .editor-card {
-    max-height: 55%;
-    overflow-y: auto;
+    height: auto !important; /* beats the inline height saved by the desktop divider */
+  }
+  .col-editor > .editor-tabs {
+    flex: none;
+  }
+  .editor-tabs > .tab-panel {
+    overflow: visible;
+  }
+  .col-editor > .height-divider {
+    display: none;
+  }
+  /* level, id and its two buttons don't fit one row */
+  .editor-fields .editor-line {
+    flex-wrap: wrap;
+  }
+  .editor-fields .editor-line .id-field {
+    flex: 1 0 100%;
+  }
+  .id-field .input-with-btn {
+    flex-wrap: wrap;
+  }
+  .editor-fields .editor-line .id-field input {
+    flex: 1;
+    min-width: 6em;
+  }
+  .col-editor :is(.btn.small, select) {
+    min-height: 36px;
   }
   .editor-card {
     display: flex;
@@ -1116,7 +1159,13 @@ label.wide {
   align-items: start;
 }
 .editor-portrait {
-  width: 96px;
+  width: calc(96px * var(--portrait-scale, 1));
+}
+/* brute size picker (S / M / L), shared by the cell, the lab teams and the lab editor */
+.brute-size { display: flex; gap: 6px; }
+.brute-size .btn.small[aria-pressed="true"] {
+  background: linear-gradient(var(--gold-hi), var(--gold));
+  color: var(--ink);
 }
 .editor-fields {
   display: grid;
@@ -2097,6 +2146,21 @@ button.chip {
   border-radius: var(--radius-panel);
   box-shadow: var(--shadow-panel);
 }
+/* desktop Lab: the Avoid button sits low in the editor column, so the popover opens upward, just above the
+   Level-ups panel and as wide as it (anchored to the panel, not the button, so it never runs past the column) */
+.workspace .editor-tabs {
+  position: relative;
+}
+.workspace .avoid-pop {
+  position: static;
+}
+.workspace .avoid-popover {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  width: auto;
+}
 .avoid-actions {
   justify-content: flex-end;
   margin: 8px 0 0;
@@ -2244,4 +2308,108 @@ button.chip {
   font-size: var(--t-meta);
   background: rgb(18 12 8 / 0.85);
   color: var(--paper);
+}
+
+/* Appearance (LookEditor, desktop dialog and mobile Lab): switches, then the steppers in two columns, so a look can be
+   tapped through while the portrait changes */
+.mlook {
+  display: grid;
+  gap: 12px;
+}
+.mlook > .btn {
+  justify-self: start;
+}
+.mlook-switches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mlook-switch .seg {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 4px;
+  font-size: var(--t-small);
+}
+.mlook-switch .seg:has(input:checked) {
+  background: var(--gold);
+  color: var(--x-on-accent, #1a1a1a);
+}
+.mlook-group {
+  margin: 0;
+  padding: 10px 0 0;
+  border: 0;
+  border-top: 1px solid var(--paper-edge);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mlook-group legend {
+  padding: 0 6px 0 0;
+  font-weight: 800;
+  font-size: var(--t-small);
+}
+.mlook-step {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.mlook-step label {
+  font-weight: 800;
+  font-size: var(--t-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mlook-step-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 3px;
+}
+.mlook .mlook-step-row .btn {
+  min-width: 0;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+}
+.mlook-step-row select {
+  min-width: 0;
+  padding-inline: 6px;
+  text-align: center;
+  text-align-last: center;
+}
+.mlook .dim {
+  opacity: 0.5;
+}
+.mlook .hint {
+  margin: 0;
+}
+.mlook-raw {
+  display: grid;
+  gap: 4px;
+  font-weight: 800;
+  font-size: var(--t-small);
+}
+/* desktop Lab: the Appearance dialog, a large live portrait beside the editor */
+.look-dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+.look-dialog-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.look-dialog-portrait {
+  width: 100%;
+  position: sticky;
+  top: 0;
+}
+@media (max-width: 699px) {
+  .look-dialog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .look-dialog-portrait {
+    width: 120px;
+    justify-self: center;
+  }
 }

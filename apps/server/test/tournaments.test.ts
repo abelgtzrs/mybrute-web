@@ -18,6 +18,8 @@ describe("tournament saves", () => {
     const player = await Player.register(h.app, "tourney_player");
     const anonymous = new Player(h.app, "anonymous");
     expect((await anonymous.call("GET", "/api/tournaments")).status).toBe(401);
+    expect((await player.call("GET", "/api/tournaments")).status).toBe(403);
+    await h.db.query("update users set role = 'admin' where username = 'tourney_player'");
 
     const created = await player.call("POST", "/api/tournaments", { label: "Spring Cup", tournament });
     expect(created.status).toBe(201);
@@ -30,6 +32,7 @@ describe("tournament saves", () => {
     expect(updated.body.item).toMatchObject({ label: "Summer Cup", tournament: { name: "Summer cup" } });
 
     const other = await Player.register(h.app, "other_player");
+    await h.db.query("update users set role = 'admin' where username = 'other_player'");
     expect((await other.call("POST", `/api/tournaments/${key}`, { label: "Stolen", tournament })).status).toBe(404);
     expect((await other.call("DELETE", `/api/tournaments/${key}`)).status).toBe(200);
     expect((await player.call("GET", "/api/tournaments")).body.items).toHaveLength(1);
@@ -39,6 +42,7 @@ describe("tournament saves", () => {
 
   it("rejects malformed or oversized tournaments", async () => {
     const player = await Player.register(h.app, "tourney_invalid");
+    await h.db.query("update users set role = 'admin' where username = 'tourney_invalid'");
     expect((await player.call("POST", "/api/tournaments", { label: "Bad", tournament: { ...tournament, format: "unknown" } })).status).toBe(400);
     expect((await player.call("POST", "/api/tournaments", { label: "Bad", tournament: { ...tournament, entrants: [] } })).status).toBe(400);
     expect((await player.call("POST", "/api/tournaments", { label: "Bad", tournament: { ...tournament, entrants: Array(65).fill({ id: "x" }) } })).status).toBe(400);

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "sh \"C:/Users/ABELGU~1/AppData/Local/Temp/claude/3b82e86096c77c82/699e7cdf-311b-4a0e-9201-86258e0b15d4/scratchpad/tournoi-build/build.sh\""
+    ]
+  }
+}

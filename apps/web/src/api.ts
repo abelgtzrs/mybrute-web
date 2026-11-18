@@ -14,7 +14,7 @@ const qs = (q: Record<string, string | number | undefined | null>) => {
   return s ? `?${s}` : "";
 };
 
-async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
+async function request<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
@@ -36,28 +36,51 @@ export interface User { id: string; username: string; role: Role; bruteCount?: n
 export interface Attributes { strength: number; agility: number; speed: number; life: number }
 export interface Kit { weapons: string[]; supers: string[]; followers: string[]; perms: string[]; talents: string[] }
 export type FightResult = "win" | "loss" | "draw";
+/** Where a brute stands in the ranked ladder. cap is null for admin brutes (no limit). */
+export interface RankInfo { rank: number; name: string; titles: number; titlesNeeded: number | null; cap: number | null; bracketSize: number }
 export interface BruteSummary {
+  adminBrute: boolean; rank: RankInfo; banked: boolean; // banked: at the level cap, so new XP is only stored
   id: string; name: string; seedId: number; gfx: string; level: number; levelUps: number;
   xp: number; xpRequired: number; pendingLevelUp: boolean; fightsLeft: number; dailyFights: number;
   record: { fights: number; wins: number; losses: number; draws: number }; createdAt: string; attributes?: Attributes;
+  // only in the brute list (GET /api/brutes): today's tournament entered? unopened rounds from any day?
+  enteredToday?: boolean; roundsToOpen?: number;
 }
+
+/** A brute still has something to do today: fights left, a level-up, today's tournament, or rounds to watch. */
+export const hasSomethingToDo = (b: BruteSummary) =>
+  b.pendingLevelUp || b.fightsLeft > 0 || b.enteredToday === false || (b.roundsToOpen ?? 0) > 0;
 export interface FightListItem {
   id: string; createdAt: string; result: FightResult; xpAwarded: number; level: number;
   opponent: { name: string; level: number; gfx: string }; damageDealt: number; damageReceived: number;
 }
 export interface LevelUpRecord { index: number; level: number; choice: 0 | 1; chosen: LevelOption; other: LevelOption; at: string }
 export interface Cell {
-  brute: BruteSummary; bits: string; attributes: Attributes; kit: Kit; check: boolean;
+  brute: BruteSummary; canChangeAppearance: boolean; bits: string; attributes: Attributes; kit: Kit; check: boolean;
   pendingOptions: [LevelOption, LevelOption] | null; lifetime: Record<string, number>;
   recentFights: FightListItem[]; levelUps: LevelUpRecord[];
+  todayTournamentId: string | null; // set once the brute has entered today's tournament
+  capsule: { maxTarget: number } | null; // set only while the time capsule is usable
 }
-export interface Opponent { offerId: string; name: string; seedId: number; level: number; gfx: string; attributes: Attributes; kit: Kit }
+export interface Opponent { offerId: string; name: string; seedId: number; level: number; levelUps: number; choices: number[]; gfx: string; attributes: Attributes; kit: Kit }
 export interface FightDetail {
   id: string; createdAt: string; result: FightResult; events: number; xpAwarded: number; level: number;
   xpAfter: number; xpRequired: number; pendingAfter: boolean; spec: FightSpec;
   playerStats: FighterStats; opponentStats: FighterStats;
   player: { name: string; seedId: number; gfx: string; level: number };
   opponent: { name: string; seedId: number; gfx: string; level: number };
+  tournament: { id: string; round: number; totalRounds: number } | null;
+}
+type TournamentOpponent = { name: string; level: number; gfx: string };
+export interface TournamentView {
+  id: string; day: string; rank: number; rankName: string; size: number; totalRounds: number; roundsOpened: number;
+  finished: boolean; champion: boolean | null; placing: string | null; next: { opponent: TournamentOpponent } | null;
+  rounds: { round: number; fightId: string; result: "win" | "loss"; opponent: TournamentOpponent }[];
+  /** Every entrant in slot order; winners[r] (match order) exists only for revealed rounds. Null on old tournaments. */
+  bracket: { entrants: (TournamentOpponent & { isBrute: boolean })[]; winners: number[][] } | null;
+}
+export interface TournamentListItem {
+  id: string; day: string; rank: number; rankName: string; size: number; roundsOpened: number; finished: boolean; placing: string | null;
 }
 
 export const api = {
@@ -69,12 +92,22 @@ export const api = {
   brutes: () => request<{ brutes: BruteSummary[]; maxBrutes: number; maxImportLevel: number }>("GET", "/api/brutes"),
   createBrute: (b: { name: string; seedId: number; gfx: string; levelUps?: number; choices?: number[] }) => request<{ brute: BruteSummary }>("POST", "/api/brutes", b),
   cell: (id: string) => request<Cell>("GET", `/api/brutes/${id}`),
+  changeAppearance: (id: string, gfx: string) => request<{ ok: true; gfx: string }>("PUT", `/api/brutes/${id}/appearance`, { gfx }),
   deleteBrute: (id: string) => request<{ ok: true }>("DELETE", `/api/brutes/${id}`),
   opponents: (id: string) => request<{ opponents: Opponent[] }>("POST", `/api/brutes/${id}/opponents`),
   fight: (id: string, offerId: string) => request<{ fightId: string; repeated: boolean }>("POST", `/api/brutes/${id}/fights`, { offerId }),
   history: (id: string, page: number, result?: string) =>
     request<{ total: number; page: number; pageSize: number; fights: FightListItem[] }>("GET", `/api/brutes/${id}/fights?page=${page}${result ? `&result=${result}` : ""}`),
   levelUp: (id: string, index: number, choice: 0 | 1) => request<{ ok: true; level: number }>("POST", `/api/brutes/${id}/level-up`, { index, choice }),
+  // "brute" prefix: the admin Lab already has api.tournaments
+  enterTournament: (id: string) => request<{ tournament: TournamentView }>("POST", `/api/brutes/${id}/tournament`),
+  bruteTournament: (id: string, tid: string) => request<{ tournament: TournamentView }>("GET", `/api/brutes/${id}/tournaments/${tid}`),
+  bruteTournaments: (id: string, page: number) =>
+    request<Paged & { items: TournamentListItem[] }>("GET", `/api/brutes/${id}/tournaments?page=${page}`),
+  // round: 1-based number of the round to open; asking for one that is already open just returns its fight
+  openRounds: (id: string, tid: string, body: { all: true } | { round: number }) =>
+    request<{ fightIds: string[]; tournament: TournamentView }>("POST", `/api/brutes/${id}/tournaments/${tid}/open`, body),
+  timeCapsule: (id: string, level: number) => request<{ ok: true; level: number }>("POST", `/api/brutes/${id}/time-capsule`, { level }),
   getFight: (fightId: string) => request<{ fight: FightDetail; brute: BruteSummary }>("GET", `/api/fights/${fightId}`),
 
   labPayloads: () => request<{ items: { key: string; label: string; params: string; savedAt: string }[] }>("GET", "/api/lab/payloads"),

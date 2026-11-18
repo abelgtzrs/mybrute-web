@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { hexToChoices } from "@mybrute/engine";
 import { api, type Cell } from "../api";
@@ -6,8 +6,11 @@ import { useAuth } from "../auth";
 import { Portrait } from "../swf/Portrait";
 import { AttributeRow, FightPips, KitList, XpBar } from "../ui/BruteKit";
 import { InventoryPanel } from "../ui/InventoryPanel";
+import { BruteSizeControl, portraitScale, useBruteSize } from "../ui/BruteSize";
+import { GfxEditor } from "../ui/GfxEditor";
 import { useApi } from "../useApi";
 import { useNames } from "../ui/language";
+import { AdminBruteLabel, RankIcon } from "./Rank";
 import { FightRow, ResultBadge } from "./FightRow";
 
 /** Narrow screens show one part at a time: the brute, its kit and level-ups, or its record. */
@@ -16,22 +19,25 @@ const PHONE = "(max-width: 699px)";
 
 export function CellPage() {
   const { id = "" } = useParams();
-  const { data, error } = useApi(() => api.cell(id), [id]);
+  const { data, error, reload } = useApi(() => api.cell(id), [id]);
   const { option, lang } = useNames();
   const [panel, setPanel] = useState<Panel>(() => (window.matchMedia(PHONE).matches ? "brute" : "kit"));
+  const [size] = useBruteSize();
+  const { user } = useAuth();
   if (error) return <div className="page"><p className="page-status error" role="alert">{error.message} <Link to="/brutes">Back to my brutes</Link></p></div>;
   if (!data) return <div className="page"><p className="page-status">Loading the cell…</p></div>;
   const b = data.brute;
   const labBrute = { name: b.name, id: b.seedId, team: 0 as const, levelUps: b.levelUps, gfx: b.gfx, choices: hexToChoices(data.bits, b.levelUps) };
 
   return (
-    <div className="page cell">
+    <div className="page cell" style={portraitScale(size)}>
       <div className="cell-grid" data-panel={panel}>
         <section className="panel cell-identity" aria-label={`${b.name}`}>
           <Portrait gfx={b.gfx} name={b.name} lazy={false} className="cell-portrait" />
           <h1 className="cell-name">{b.name}</h1>
+          {b.adminBrute && <AdminBruteLabel />}
           <p className="cell-level">Level {b.level}</p>
-          <XpBar xp={b.xp} required={b.xpRequired} />
+          <XpBar xp={b.xp} required={b.xpRequired} banked={b.banked} />
           <div className="cell-action">
             {b.pendingLevelUp ? (
               <Link to={`/brutes/${b.id}/level-up`} className="btn play gold">Choose your level-up</Link>
@@ -43,6 +49,7 @@ export function CellPage() {
             <FightPips left={b.fightsLeft} total={b.dailyFights} />
             <span className="muted small">{b.fightsLeft} of {b.dailyFights} fights left today</span>
           </div>
+          <RankPanel cell={data} onChanged={reload} />
           <dl className="record">
             <div><dt>Wins</dt><dd>{b.record.wins}</dd></div>
             <div><dt>Losses</dt><dd>{b.record.losses}</dd></div>
@@ -51,9 +58,11 @@ export function CellPage() {
           </dl>
           <div className="cell-links">
             <Link to={`/brutes/${b.id}/history`}>Fight history</Link>
-            <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>
+            {user?.role === "admin" && <Link to="/lab" state={{ brute: labBrute }}>Try a copy in the Lab</Link>}
+            <ChangeAppearance cell={data} onSaved={reload} />
             <DeleteBrute cell={data} />
           </div>
+          <BruteSizeControl />
         </section>
 
         <div className="col cell-main">
@@ -130,6 +139,109 @@ function LifetimeStats({ l }: { l: Record<string, number> }) {
       ))}
       <p className="hint">Bomb and downpour damage isn't included: the original fight log doesn't say whom they hit.</p>
     </div>
+  );
+}
+
+/** Rank, today's tournament entry and (when allowed) the time capsule. */
+function RankPanel({ cell, onChanged }: { cell: Cell; onChanged: () => void }) {
+  const b = cell.brute;
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const todayId = cell.todayTournamentId;
+  const enter = async () => {
+    setBusy(true); setError(null);
+    try {
+      const r = await api.enterTournament(b.id);
+      nav(`/brutes/${b.id}/tournaments/${r.tournament.id}`);
+    } catch (e) {
+      setError((e as Error).message);
+      onChanged(); // a refused entry may still have opened and paid a past tournament
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="rank-panel">
+      <div className="rank-head">
+        <RankIcon rank={b.rank} />
+        <strong>{b.rank.name}</strong>
+      </div>
+      <p className="muted small">
+        {b.rank.titlesNeeded === null ? "Top rank" : `Titles ${b.rank.titles}/${b.rank.titlesNeeded}`}. Today's bracket: {b.rank.bracketSize} brutes.
+      </p>
+      {todayId ? (
+        <Link to={`/brutes/${b.id}/tournaments/${todayId}`} className="btn play">Go to today's tournament</Link>
+      ) : (
+        <button type="button" className="btn play" disabled={busy || b.pendingLevelUp} onClick={enter}>Enter today's tournament</button>
+      )}
+      {b.pendingLevelUp && <p className="muted small">Choose your level-up first</p>}
+      {error && <p className="field-error" role="alert">{error}</p>}
+      <Link to={`/brutes/${b.id}/history?tab=tournaments`} className="small">Tournament history</Link>
+      {cell.capsule && <TimeCapsule id={b.id} maxTarget={cell.capsule.maxTarget} onDone={onChanged} />}
+    </div>
+  );
+}
+
+function TimeCapsule({ id, maxTarget, onDone }: { id: string; maxTarget: number; onDone: () => void }) {
+  const [level, setLevel] = useState(maxTarget);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const rewind = async () => {
+    setError(null);
+    try { await api.timeCapsule(id, level); setConfirming(false); onDone(); }
+    catch (e) { setError((e as Error).message); }
+  };
+  return (
+    <div className="capsule">
+      <h3>Time capsule</h3>
+      <label>Rewind to level
+        <select value={level} onChange={(e) => { setLevel(Number(e.target.value)); setConfirming(false); }}>
+          {Array.from({ length: maxTarget }, (_, i) => i + 1).map((l) => <option key={l} value={l}>{l}</option>)}
+        </select>
+      </label>
+      {confirming ? (
+        <div className="row">
+          <span className="small">This rewind can't be undone.</span>
+          <button type="button" className="btn danger solid" onClick={rewind}>Rewind to level {level}</button>
+          <button type="button" className="btn ghost" onClick={() => setConfirming(false)}>Cancel</button>
+        </div>
+      ) : <button type="button" className="btn ghost" onClick={() => setConfirming(true)}>Rewind…</button>}
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function ChangeAppearance({ cell, onSaved }: { cell: Cell; onSaved: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [gfx, setGfx] = useState(cell.brute.gfx);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try { await api.changeAppearance(cell.brute.id, gfx); ref.current?.close(); onSaved(); }
+    catch (err) { setError((err as Error).message); }
+    finally { setBusy(false); }
+  };
+  if (!cell.canChangeAppearance) return <span className="muted small">Appearance already changed once.</span>;
+  return (
+    <>
+      <button type="button" className="link" onClick={() => { setGfx(cell.brute.gfx); setError(null); ref.current?.showModal(); }}>Change appearance</button>
+      <dialog ref={ref} className="dialog" aria-labelledby="appearance-title">
+        <form method="dialog" className="dialog-body" onSubmit={save}>
+          <h2 id="appearance-title">Change {cell.brute.name}'s appearance</h2>
+          <p className="muted">{isAdmin ? "As an admin you can change this as often as you like." : "You can change the appearance once, so choose carefully."}</p>
+          <Portrait gfx={gfx} name={cell.brute.name} lazy={false} className="cell-portrait" />
+          <GfxEditor gfx={gfx} onChange={setGfx} />
+          {error && <p className="field-error" role="alert">{error}</p>}
+          <div className="row">
+            <button type="submit" className="btn play" disabled={busy || gfx === cell.brute.gfx}>Save appearance</button>
+            <button type="button" className="btn ghost" onClick={() => ref.current?.close()}>Cancel</button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }
 

@@ -57,7 +57,7 @@ function BruteTile({ brute, desc, selected, problem, onSelect }: { brute: SpecBr
 }
 
 /** Team props the original engine reads: a support brute, sabotage (from a saboteur) and poison (from a chef). */
-function TeamExtras({ spec, team, dispatch, editing, onEdit }: { spec: FightSpec; team: 0 | 1; dispatch: (a: LabAction) => void; editing: boolean; onEdit: () => void }) {
+export function TeamExtras({ spec, team, dispatch, editing, onEdit }: { spec: FightSpec; team: 0 | 1; dispatch: (a: LabAction) => void; editing: boolean; onEdit: () => void }) {
   const prop = team === 0 ? spec.p0 : spec.p1;
   const s = supportOf(spec, team);
   const setTeam = (patch: Record<string, unknown>) => dispatch({ type: "setTeam", team, patch });
@@ -87,7 +87,7 @@ function TeamExtras({ spec, team, dispatch, editing, onEdit }: { spec: FightSpec
   );
 }
 
-function AddBrute({ team, takenIds, onAdd }: { team: 0 | 1; takenIds: number[]; onAdd: (b: SpecBrute) => void }) {
+export function AddBrute({ team, takenIds, onAdd }: { team: 0 | 1; takenIds: number[]; onAdd: (b: SpecBrute) => void }) {
   const [open, setOpen] = useState(false);
   const [level, setLevel] = useState("10");
   const [id, setId] = useState("");

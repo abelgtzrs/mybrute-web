@@ -1,4 +1,6 @@
-import { Link, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { api, hasSomethingToDo } from "./api";
+import { useApi } from "./useApi";
 import { AdminBrute, AdminBrutes } from "./admin/Brutes";
 import { AdminLayout, RequireAdmin } from "./admin/Layout";
 import { AdminOverview } from "./admin/Overview";
@@ -10,13 +12,23 @@ import { CellPage } from "./classic/Cell";
 import { CreateBrutePage } from "./classic/CreateBrute";
 import { FightPage } from "./classic/FightView";
 import { HistoryPage } from "./classic/History";
+import { TournamentPage, TournamentWatchRedirect } from "./classic/Tournament";
 import { LevelUpPage } from "./classic/LevelUp";
 import { MyBrutesPage } from "./classic/MyBrutes";
 import { OpponentsPage } from "./classic/Opponents";
 import { GuidePage } from "./guide/GuidePage";
-import { LabPage } from "./lab/LabPage";
+import { LabEntry, MobileLabPage } from "./lab/mobile/MobileLabPage";
 import { TournamentsPage } from "./tournaments/TournamentsPage";
 import { LanguagePicker } from "./ui/language";
+
+/** Number of brutes with something left to do today, on the "My brutes" link. Refreshed on every page change. */
+function TodoBadge() {
+  const { pathname } = useLocation();
+  const { data } = useApi(() => api.brutes(), [pathname]);
+  const count = data ? data.brutes.filter(hasSomethingToDo).length : 0;
+  if (!count) return null;
+  return <span className="nav-badge" aria-label={`${count} ${count === 1 ? "brute has" : "brutes have"} something to do`}>{count}</span>;
+}
 
 export function App() {
   const { user, logout } = useAuth();
@@ -26,9 +38,9 @@ export function App() {
       <header className="masthead">
         <Link to="/" className="wordmark">MyBrute<span>++</span></Link>
         <nav aria-label="Main">
-          <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span></NavLink>
-          <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>
-          <NavLink to="/tournaments"><span className="nav-long">Tournaments</span><span className="nav-short">Tourneys</span></NavLink>
+          <NavLink to="/brutes"><span className="nav-long">My brutes</span><span className="nav-short">Brutes</span>{user && <TodoBadge />}</NavLink>
+          {user?.role === "admin" && <NavLink to="/lab"><span className="nav-long">Laboratory</span><span className="nav-short">Lab</span></NavLink>}
+          {user?.role === "admin" && <NavLink to="/tournaments"><span className="nav-long">Tournaments</span><span className="nav-short">Tourneys</span></NavLink>}
           <NavLink to="/guide">Guide</NavLink>
           {user?.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
           <LanguagePicker />
@@ -45,8 +57,9 @@ export function App() {
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/lab" element={<LabPage />} />
-          <Route path="/tournaments" element={<TournamentsPage />} />
+          <Route path="/lab" element={<RequireAdmin><LabEntry /></RequireAdmin>} />
+          <Route path="/lab/mobile" element={<RequireAdmin><MobileLabPage /></RequireAdmin>} />
+          <Route path="/tournaments" element={<RequireAdmin><TournamentsPage /></RequireAdmin>} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/guide/:page" element={<GuidePage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -57,6 +70,8 @@ export function App() {
           <Route path="/brutes/:id/fight" element={<RequireAuth><OpponentsPage /></RequireAuth>} />
           <Route path="/brutes/:id/level-up" element={<RequireAuth><LevelUpPage /></RequireAuth>} />
           <Route path="/brutes/:id/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
+          <Route path="/brutes/:id/tournaments/:tid" element={<RequireAuth><TournamentPage /></RequireAuth>} />
+          <Route path="/brutes/:id/tournaments/:tid/watch/:round" element={<RequireAuth><TournamentWatchRedirect /></RequireAuth>} />
           <Route path="/fights/:fightId" element={<RequireAuth><FightPage /></RequireAuth>} />
           <Route path="/admin" element={<RequireAdmin><AdminLayout /></RequireAdmin>}>
             <Route index element={<AdminOverview />} />
@@ -87,7 +102,7 @@ function Home() {
       </p>
       <div className="row">
         <Link to={user ? "/brutes" : "/register"} className="btn play">{user ? "Go to my brutes" : "Create an account"}</Link>
-        <Link to="/lab" className="btn ghost light">Open the Laboratory</Link>
+        {user?.role === "admin" && <Link to="/lab" className="btn ghost light">Open the Laboratory</Link>}
       </div>
     </section>
   );

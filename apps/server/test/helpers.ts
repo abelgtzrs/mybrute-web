@@ -12,7 +12,7 @@ export async function harness(): Promise<Harness> {
 }
 
 export async function reset(db: Db) {
-  await db.query("truncate users, sessions, brutes, level_ups, opponent_offers, fights, lab_payloads, lab_brutes, tournament_saves, admin_log restart identity cascade");
+  await db.query("truncate users, sessions, brutes, level_ups, opponent_offers, fights, lab_payloads, lab_brutes, classic_tournaments, tournament_saves, admin_log restart identity cascade");
   await db.query("update settings set value = '5' where key = 'max_brutes_default'");
   await db.query("update settings set value = '10' where key = 'daily_fights'");
   await db.query("delete from settings where key = 'max_import_level'");
@@ -23,7 +23,7 @@ export class Player {
   cookie = "";
   constructor(private app: FastifyInstance, public username: string) {}
 
-  async call(method: "GET" | "POST" | "DELETE", url: string, body?: unknown, opts: { csrf?: boolean } = {}) {
+  async call(method: "GET" | "POST" | "PUT" | "DELETE", url: string, body?: unknown, opts: { csrf?: boolean } = {}) {
     const res = await this.app.inject({
       method, url, payload: body as object | undefined,
       headers: { ...(opts.csrf === false ? {} : { "x-mybrute": "1" }), ...(this.cookie ? { cookie: this.cookie } : {}) },
