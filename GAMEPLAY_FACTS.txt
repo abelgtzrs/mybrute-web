@@ -1,0 +1,814 @@
+===============================================================================
+            LA BRUTE: THE COOLEST GAMEPLAY FACTS, FROM THE REAL ENGINE CODE
+===============================================================================
+
+Where these facts come from
+---------------------------
+Every number below was read from the original game code that this project
+keeps unchanged:
+
+  packages/engine/vendor/glad.js    how brutes are built and level up
+  packages/engine/vendor/fight.js   how fights are played
+
+A few numbers were measured by running that code (for example "how many
+brutes get X"). Those are marked "MEASURED" and include the sample size.
+Where I am guessing what a name means, I say so.
+
+Two pieces of vocabulary used throughout:
+
+  * "Level-up" means one level gained. A brute's displayed level is its
+    number of level-ups plus 1.
+  * "Option 0 / option 1" are the two choices offered at each level-up.
+
+Contents
+--------
+   1. The brute's starting point
+   2. The random number generator behind everything
+   3. Level-ups: what you are really choosing between
+   4. Each brute has a hidden "destiny"
+   5. Rarity: how likely each reward is
+   6. The four stats and what they do in a fight
+   7. The 28 weapons
+   8. The strangest weapons
+   9. The ten super skills
+  10. The five pets
+  11. The 27 permanent bonuses
+  12. How a fight is played, turn by turn
+  13. Hits, dodges, blocks, combos and counters
+  14. Talents, the support brute and other team tricks
+  15. Level limits and what a level 500 brute looks like
+  16. Small details worth knowing
+  17. Things the code does not show
+
+
+===============================================================================
+1. THE BRUTE'S STARTING POINT
+===============================================================================
+
+* Every brute starts with 2 strength, 2 agility, 2 speed and 2 life.
+  Then it gets two bonus points of +1, each going to a stat picked at random.
+  That makes 10 stat points in total, always.
+
+* So the game has only 10 possible starting stat combinations. MEASURED over
+  20,000 ids, exactly 10 appear. The five most common each cover
+  about 12% of brutes, for example 3/2/3/2 or 2/2/3/3
+  (strength/agility/speed/life).
+
+* Starting health follows this formula (from the code):
+
+      health = 50 + (life stat + level-ups x 0.25) x 6
+
+  A new brute has 62 to 74 health. MEASURED: those are exactly the lowest and
+  highest values in 20,000 ids.
+
+* Health grows with level-ups even if you never add to the life stat: each
+  level-up adds 0.25 to the life stat inside that formula, which is 1.5
+  health.
+
+* Every brute begins with bare hands ("HANDS") as its default weapon.
+
+
+===============================================================================
+2. THE RANDOM NUMBER GENERATOR BEHIND EVERYTHING
+===============================================================================
+
+* All the randomness in the game, for brutes and for fights, comes from one
+  small formula that appears over and over in the code:
+
+      seed = seed x 16807 mod 2147483647
+
+  This is a well-known generator (often called "Park-Miller" or the
+  "minimal standard" generator). 16807 is 7 to the 5th power, and 2147483647
+  is 2 to the 31st power minus 1.
+
+* Each brute has its own generator, started from the brute's id. The id
+  therefore fixes two things: the brute's hidden destiny (section 4) and its
+  first level-up offer. It does NOT fix the rest of the career. Every later
+  offer also depends on the choices made before it, as the next points
+  explain.
+
+* Every fight has its own generator too, started from the fight seed. With
+  the same seed and the same brutes, every hit lands (or misses) exactly the
+  same way, every time.
+
+* Choosing option 1 at a level-up does more than pick a reward. The code
+  shifts the brute's generator seed by a number between 131 and 10,137. This changes
+  every later offer. A brute's future is therefore a branching tree, not a
+  line. Option 0 leaves the generator alone.
+
+* Because of this, there are far more possible careers than there are brutes.
+  A brute with 65 level-ups has 2 to the 65th power possible choice
+  sequences, each leading to different offers after the first option 1.
+
+* MEASURED: take brute id 18327968 (a brute from the recorded fights) and try
+  all 4,096 ways to make its first 12 choices. They end in 4,072 different
+  builds (stats plus weapons, supers, pets and bonuses). Only 24 builds are
+  repeats. Both paths see the same first offer, and then they drift apart:
+  after one different choice, the second and third offers changed from
+  "Wood Club / Axe" to "Knife / Lance".
+
+* The summary: a brute's destiny is fixed, but a player never sees it in the
+  game, and the destiny only sets limits. Which of the allowed rewards the
+  brute meets, and in what order, depends on the path. There are an
+  exponential number of paths, so two brutes with the same id can end up
+  very different.
+
+
+===============================================================================
+3. LEVEL-UPS: WHAT YOU ARE REALLY CHOOSING BETWEEN
+===============================================================================
+
+* At each level-up the game rolls one reward from the weighted table
+  (section 5) and one stat. Then it builds your two options like this:
+
+    - If the reward is new to this brute, the choices are:
+        option 0 = the reward
+        option 1 = +3 to a stat
+    - If the roll gives a reward the brute already owns (or no reward), the
+      choices are both stat boosts:
+        option 0 = +3 to one stat
+        option 1 = +2 to a second stat and +1 to a third
+
+  So a reward is always option 0, and a stat boost is the other option.
+  (The Lab's "avoid this reward" tool relies on this.)
+
+* Early on, almost every level-up offers a reward. MEASURED: at the first
+  level-up, a reward was offered for all 20,000 ids tested.
+
+* Rewards get rarer as levels climb, for two reasons:
+    - You can't be offered something you already own, and the table has only
+      73 items, so duplicates become common.
+    - From level 80 on, the game only rolls for a reward some of the time:
+      it checks "random number mod level < 80". At level 160, that is a 50%
+      chance. At level 400, it is a 20% chance.
+
+* Stat boosts are bigger than they look. Raw stat points can be multiplied
+  later by permanent bonuses (section 11), so early stat points are worth
+  more to a brute that goes on to take a multiplier.
+
+* "Super" stat bonuses (Super Force, Super Agility, Super Speed, Super Life)
+  have a built-in limit. After the first one, the odds of the others drop
+  from 60 to 3. After the second, to 1. After the third, to 0. So a brute can
+  have at most 3 of the 4.
+
+
+===============================================================================
+4. EACH BRUTE HAS A HIDDEN "DESTINY"
+===============================================================================
+
+When a brute is created, the code uses its id to roll a private set of
+restrictions. This destiny is fixed for the id and never changes. Players
+can't see it in the game. It only sets limits: it says what can NEVER be
+offered, not what will be. Inside those limits, the offers depend on the
+choices made along the way (section 2), so the same destiny allows an
+enormous number of different careers.
+
+* A 1 in 1000 chance of a special "stance" (the code stores a stance id of
+  0 or 1). Presumably this changes how the brute stands in the animation;
+  the engine only stores the number, so I can't say what it looks like.
+
+* Four groups of rolls remove things from this brute's pool for good:
+
+    Thief, Downpour, Hypno  Each is removed for 2 out of 3 brutes.
+                            Only about 1 in 3 brutes can ever get each one.
+
+    Immortality             Removed for 5 out of 6 brutes.
+
+    The 8 oddball weapons   Leek, mug, frying pan, chick, trombone, keyboard,
+                            noodles, racket: each is removed for 3 out of 4
+                            brutes.
+
+    0 to 2 ordinary         The game picks up to two weapons at random from
+    weapons                 16 ordinary ones and removes them from this
+                            brute's pool. (It picks with replacement, so it
+                            may pick the same one twice and remove only one.)
+
+* Two stats get an inborn lean. The brute gets a list of 11 "stat weights":
+  two 0s, two 1s, two 2s, two 3s, and three random numbers from 0 to 3. The
+  brute's two starting bonus points are drawn from this list. Stat numbers:
+  0 strength, 1 agility, 2 speed, 3 life.
+
+* Bear and panther are rivals. The moment a brute takes ANY pet (a dog, the
+  panther or the bear), the game rolls one more random number. In 999 cases
+  out of 1000, taking the panther removes the bear from the pool, and taking
+  the bear removes the panther. In the remaining 1 case in 1000 the other
+  one stays available.
+  - This is not part of the id's destiny. It is decided at the moment the
+    pet is taken, by the next number in the brute's random sequence. So it
+    depends on the whole path before that point, and you can't read it from
+    the id alone.
+  - MEASURED: out of 5,000 ids taken to level 201 by always choosing option
+    0, none ended up with both. Looking at the engine's weight table
+    directly, 6 of the 9,044 brutes that took a bear or panther in 60,000
+    ids (60 option-0 level-ups) still had the other one available. That is
+    about 0.07%, in line with 1 in 1000 for a sample this small.
+  - A real example, found by the project owner: brute id 20208 at level 72,
+    with the level-up bits 50c59eb252a68b6c2f (35 second options picked).
+    Replaying it in the engine gives the bear at level 4, a dog at level 26
+    and the panther at level 72, so it holds both. The bear was taken 68
+    level-ups before the panther was offered, which is why the 1 in 1000
+    exception is so hard to see.
+
+* Taking any talent removes all the other talents from the pool. A brute can
+  only ever hold one.
+
+
+===============================================================================
+5. RARITY: HOW LIKELY EACH REWARD IS
+===============================================================================
+
+The base table has 73 rewards with weights adding to 1003 (before any
+brute's destiny removes things). A reward's chance on one roll is its weight
+divided by 1003:
+
+  Group                Items   Total weight   Share of rolls
+  Weapons                26         470           about 47%
+  Permanent bonuses      27         411           about 41%
+  Super skills           10          73           about 7%
+  Pets                    5          32           about 3%
+  Talents                 5          17           about 2%
+
+The most common rewards:
+
+  Sword             100   about 10.0%
+  Knife              80   about  8.0%
+  Stick              70   about  7.0%
+  Super Force/Agility/Speed/Life   60 each   about 6.0% each
+  Wood club          50   about  5.0%
+  Lance              40   about  4.0%
+  Axe                40   about  4.0%
+
+The rarest rewards, with weight 1 (about 0.1% per roll):
+
+  Immortality   Grab (super)   Bear   Panther
+  Untouchable   Merciless      Diesel
+
+Other rarities:
+  * Hammer: weight 3 (0.3%).  Trapper: weight 4 (0.4%).
+  * Dog 0: weight 20 (2.0%). Dog 1: weight 8. Dog 2: weight 2.
+
+Notes:
+  * The sword is about 100 times more common than the rarest rewards, and
+    this is before destiny removes things, so some rare things are
+    effectively even rarer.
+  * MEASURED: when always choosing option 0 up to level 121 across 3,000
+    ids, only about 2.6% of brutes ended up with Immortality.
+
+
+===============================================================================
+6. THE FOUR STATS AND WHAT THEY DO IN A FIGHT
+===============================================================================
+
+STRENGTH (damage)
+  Brawl damage is:
+      (weapon damage + strength x coefficient) x random 0.8 to 1.2
+  where  coefficient = 0.2 + weapon damage x 0.05.
+  Heavy weapons convert strength into damage much more efficiently. See
+  section 7. After that the target's armor is subtracted, with a minimum of
+  1 damage.
+
+AGILITY (dodging and combos)
+  - Dodge: the difference between your agility and the attacker's, times 2,
+    adds to your dodge chance, limited to a swing of plus or minus 40
+    percentage points.
+  - Combos: each attack gives a chance to attack again equal to
+        brute combo bonus + weapon combo + agility   (in percent)
+    Every extra attack halves the chance for the next one.
+  - Thrown weapons also add 0.15 x agility to their damage.
+
+SPEED (how often you act)
+  Each action pushes your next turn back by:
+        weapon tempo x speed factor + a random 0 to 9
+  and the speed factor is:   0.25 + 20 / (10 + speed) x 0.75
+    speed 2     factor 1.50    (slow)
+    speed 10    factor 1.00
+    speed 50    factor 0.50
+    speed 423   factor 0.28    (the factor can never go below 0.25)
+  So speed has strongly diminishing returns, and a speed 423 brute acts
+  about 5 times as often as a speed 2 brute with the same weapon.
+
+LIFE (health)
+  Health = 50 + (life stat + level-ups x 0.25) x 6. A brute with life stat
+  379 at level 500 has 3,072 health (MEASURED, always choosing option 0, id 1).
+
+
+===============================================================================
+7. THE 28 WEAPONS
+===============================================================================
+
+The weapon table has 28 entries. 26 can be won as rewards. The other two are
+HANDS (every brute's default) and FANGS (used by pets).
+
+How to read the table: "damage" is the weapon's base damage, "speed" is its
+tempo (lower is faster), and the rest are percentage adjustments.
+
+The damage-per-hit column below uses the strength formula from section 6 with
+the random factor at its average (1.0), at strength 10 and at strength 50.
+
+  Weapon        Damage  Tempo   Hit @10 str  Hit @50 str
+  Hammer          55     230        84.5        202.5
+  Flail           36     220        56.0        136.0
+  Big sword       28     180        42.0        110.0
+  Axe             17     150        27.5         69.5
+  Sword           10     120        17.0         45.0
+  Knife            7      60        12.5         34.5
+
+Things this table shows:
+
+* A HAMMER at strength 10 hits for about 84, which is more than the 62 to
+  74 health of a brand-new brute. One lucky hammer hit can end a level-1
+  fight. The price: its tempo is 230 (very slow), it lowers your dodge by 40
+  points, your parry by 50, and your combo chance by 40.
+
+* The FLAIL has an enormous armor-piercing value (150) and is also very
+  slow.
+
+* Weapon "classes" matter for permanent bonuses. The code gives each weapon
+  a class number (0 to 7):
+      0 bare handed (hands, fangs, mug)
+      1 blades (knife, sword, big sword, halberd, scimitar)
+      2 piercing (lance, trident, stick, sai)
+      3 axe
+      4 blunt / heavy (hammer, clubs, flail, frying pan, trombone, keyboard,
+        racket, leek)
+      5 fan
+      6 thrown (shuriken, chick, noodles)
+      7 whip
+
+* Each weapon has several percentage adjustments. Their code names mean:
+    rip = riposte chance      rap = accuracy (lowers the target's dodge)
+    dod = your dodge           par = your parry (block) chance
+    per = armor piercing       dis = disarm chance (knock the enemy's weapon
+    combo = combo chance            away)
+    zone = reach, used in counters (section 13)
+
+* The FAN is the speed weapon: tempo 28 (very fast), damage 4, dodge +60,
+  riposte +50, combo +45, but parry -50 and disarm -50.
+
+* The WHIP has the longest reach (zone 5), +30 accuracy, +30 dodge, +30
+  disarm and +35 combo.
+
+* The SAI has the best disarm: +100. Each hit has a 100% base chance to knock
+  the opponent's weapon away.
+
+* The LANCE has reach 3 and the HALBERD reach 4. Reach decides who wins
+  "counter" duels (section 13).
+
+
+===============================================================================
+8. THE STRANGEST WEAPONS
+===============================================================================
+
+Eight weapons are far rarer, as a group, because each is removed from three
+out of four brutes (section 4). They are also the odd ones out in the table:
+
+  POIREAU (leek)    Riposte +100, accuracy +100, armor piercing +200,
+                    combo +200. Damage only 5. The most extreme numbers of
+                    any weapon in the table: it practically always strikes
+                    back, never gets dodged, and chains attacks.
+
+  RACKET            Riposte +100, parry +20. A weapon built to hit back.
+
+  POELE (frying     Damage 17, parry +40 (the best block of any weapon),
+  pan)              combo -40.
+
+  MUG               Damage 8, accuracy +30, combo +40.
+
+  TROMBONNE         Damage 20, tempo 250 (the slowest weapon), disarm +50,
+  (trombone)        parry +20, reach 2.
+
+  KEYBOARD          Damage 7, combo +50 (second only to the leek).
+
+  POUSSIN (chick)   A thrown weapon: damage 5, tempo 32.
+  NOODLES           A thrown weapon: damage 10, tempo 45.
+
+The shuriken is the other thrown weapon (damage 3, tempo 12, the fastest
+tempo in the game).
+
+How throwing works:
+* A "throw" weapon is thrown on every use. Its damage is
+      (weapon damage + strength x 0.1 + agility x 0.15) x random 1.0 to 1.5
+  with a minimum of 1. Thrown weapons are not lost after throwing.
+* In this code a thrown weapon's damage is not reduced by the target's
+  armor: the function that rolls it is called without the target. (Brawl
+  hits, Downpour and grabs do subtract armor.)
+* Any other weapon can also be thrown by accident. When a brute holds a
+  melee weapon, there is a 1 in "damage" chance (for example 1 in 7 for a
+  knife, 1 in 55 for a hammer) that it throws it instead. The weapon is then
+  gone for the rest of the fight, and the brute is left with bare hands.
+  Its damage uses the thrown formula above.
+
+
+===============================================================================
+9. THE TEN SUPER SKILLS
+===============================================================================
+
+How supers work:
+* At the start of each of a brute's turns, the game draws one of its supers.
+  The chance that one fires is roughly  (sum of the supers' "toss" values)
+  / (that sum + 10), so the more supers a brute has, the more often it uses
+  one.
+* Each super has a limited number of uses ("uses" below). When the uses run
+  out, the super is gone.
+* Some supers refuse to fire when they would be useless, and then the brute
+  carries on with a normal action.
+
+  THIEF (2 uses, toss 8)
+    Steals the opponent's current weapon, but only if they are holding one.
+    If the thief already holds a weapon, it throws it away first, with a 1 in
+    4 chance, otherwise the steal does not happen. The victim also loses a
+    little time.
+
+  BRUTE (1 use, toss 5)
+    Doubles the damage of the brute's next action. The effect is removed at
+    the end of that action.
+
+  MEDECINE (1 use, toss 5)
+    Heals between 25% and 50% of the health already lost, but only if at
+    least 50 health is missing. Also cures poison on the team.
+
+  NET (1 use, toss 5)
+    Traps an opponent. A trapped target loses its dodge and parry. It can't
+    act for  max(260 - 10 x sqrt(target strength), 50)  time units, and the
+    first hit it takes breaks the net. Pets caught in a net are stuck for a
+    very long time. The code prefers to net a pet if there is one.
+
+  BOMB (2 uses, toss 2)
+    Hits every enemy at once, pets included, for 15 to 24 damage each.
+
+  GRAB (1 use, toss 2)
+    A big grab: its damage is 4 times a "grab" hit, and a grab hit is
+        (10 + strength x 0.6) x random 0.8 to 1.2.
+    The brute must have bare hands to use it (or drop its weapon, a 1 in 4
+    chance).
+
+  SHOUT (2 uses, toss 8)
+    Each enemy pet has a 50% chance to flee the fight. It only works if
+    enemy pets exist.
+
+  HYPNO (1 use, toss 3)
+    Every enemy pet changes sides and fights for the hypnotist.
+
+  DOWNPOUR (1 use, toss 2)
+    Needs more than 2 weapons. The brute throws about half of its weapons
+    (never the one in its hand) at the opponent in one go. Each weapon's damage is
+    (weapon damage + strength x 0.1 + agility x 0.15) x random 1.0 to 1.5
+    minus armor. It takes a long time (200 x speed factor).
+
+  TRAPPER (4 uses, toss 20)
+    Eats a dead pet to heal: 20% of maximum health for a dog, 30% for a
+    panther, 50% for a bear. Only works if there is a body and the brute is
+    missing at least 20 health. It has the highest toss value (20) and the
+    most uses (4), so it fires often.
+
+Some combinations:
+* Hypno plus a team full of pets is strongest when the enemy has pets, since
+  it flips all of them at once.
+* Trapper works best with enemy or friendly pets dying, because it needs
+  bodies.
+* Shout and Hypno do nothing against a brute without pets.
+
+
+===============================================================================
+10. THE FIVE PETS
+===============================================================================
+
+Pets ("followers") join the fight as extra fighters. Each costs the owner
+some of its life stat when taken, and fights with fangs (the bear uses bare
+hands).
+
+  Pet        Strength  Agility  Speed  Life  Starts acting at  Life cost
+  Dog 0         6         5       3     -6        10             -2
+  Dog 1         6         5       3     -6        10             -2
+  Dog 2         6         5       3     -6        10             -2
+  Panther      23        16      24     -4        60             -6
+  Bear         40         2       1     10       360             -8
+
+(Dog 0, 1 and 2 have identical numbers in the data table. The three dogs
+look different but are tuned the same.)
+
+Things to notice:
+* The bear is extremely slow to start. Its starting time is 360, so it joins
+  the action very late (a typical brute starts near 0). It has strength 40,
+  the highest in the table.
+* The panther is the fast one: speed 24, combo +60, dodge +20.
+* A bear costs its owner 8 life stat points, which is a lot of health. A
+  panther costs 6, a dog 2.
+* The "Life" column is the pet's life stat. Its real health comes from the
+  same formula as a brute's.
+* Pets never get big stat bonuses; they don't level.
+* A pet that dies leaves a body. A brute with Trapper can eat it
+  (section 9), and the brute's team gets a "pet frag" counted in its stats.
+* When a pet is hypnotised, it switches teams and the project's statistics
+  code credits its later damage to the hypnotist's side.
+
+
+===============================================================================
+11. THE 27 PERMANENT BONUSES
+===============================================================================
+
+Names are the engine's own. Effects below come from the code.
+
+STAT MULTIPLIERS
+  SUPER_FORCE / SUPER_AGILITY / SUPER_SPEED / SUPER_LIFE
+    +3 to that stat and then x1.5 to it at the end. At most 3 of the four
+    can be taken (section 3). These have weight 60 each, the most common
+    permanent bonuses.
+
+  IMMORTALITY
+    Life x3.5, but strength, agility and speed x0.75. Weight 1, and removed
+    entirely for 5 of 6 brutes.
+
+  DIESEL
+    +5 speed and a x2.5 speed multiplier, but the brute starts acting 200
+    time units late. A slow engine that wins the long fight. Weight 1.
+
+OFFENCE
+  BLADE_MASTER     +50% damage with blade-class weapons.
+  BRAWL_MASTER     Doubles bare-hand damage (+100%).
+  BLUNT_MASTER     Heavy weapons are used 25% faster.
+  TWISTER          +20 combo chance.
+  PUGNACITY        +30 riposte chance.
+  CHOC             +50 disarm chance.
+  MERCILESS        +30 accuracy, which lowers the target's dodge chance.
+  VANDALISM        Each hit destroys one of the enemy's spare weapons.
+
+DEFENCE
+  SHIELD           +45 parry. The shield can be knocked off by a disarm.
+  ARMOR            -5 damage from every hit and -10% speed (armor level +1).
+  LEATHER_SKIN     -2 damage from every hit.
+  UNTOUCHABLE      +30 dodge.
+  VIGILANCE        +1 counter (counter chance is 10% per point, see
+                   section 13).
+  COUNTER          A parried hit lets the brute attack back at once, and
+                   adds +10 parry.
+  LEAD_BONES       Takes 30% less damage from blunt (heavy) weapons.
+  IRON_HEAD        When an attack reaches this brute, there is a 30% chance
+                   the attacker's weapon is knocked out of its hands.
+  INCREVABLE       No single hit can take more than a fifth of maximum
+                   health. (The name is a French word for "can't be
+                   burst".)
+  SURVIVAL         Once per fight, survives a fatal blow with 1 health.
+  BALLERINA        The first incoming attack is always dodged.
+  STAYER           70% chance to attack again right away after an attack is
+                   dodged or parried.
+
+TIMING
+  WARM_BLOODED     Starts acting 200 time units earlier: first strike.
+
+Combinations that stand out:
+* Immortality plus a big life stat means huge health, and Diesel is the
+  opposite plan: low early, strong late.
+* Shield plus Counter plus a Frying Pan is a defensive build.
+* A leek or racket (riposte 100) plus Pugnacity strikes back constantly.
+* Armor takes 5 off each hit, and every hit still does at least 1 damage.
+  So armor stops chip damage from weak weapons almost completely, and does
+  little against a hammer.
+* Vandalism is strong against Thief, Downpour and Hypno builds (they need
+  spare weapons).
+
+
+===============================================================================
+12. HOW A FIGHT IS PLAYED, TURN BY TURN
+===============================================================================
+
+* A fight is a list of fighters sorted by an "init" number, a kind of clock.
+  The fighter with the lowest init acts next. After acting, a fighter's
+  init increases by its action's cost, so slow actions push it down the
+  queue.
+
+* The loop runs at most 1000 times. If neither side has won, the fight is a
+  draw. In Classic rules a draw gives 1 XP, same as a loss.
+
+* Each turn, in order:
+    1. A support brute may join (section 14).
+    2. The fighter may use a super skill.
+    3. It may switch to a different weapon from its collection. When it
+       switches, it keeps the new weapon for a while (a "keep" chance that
+       halves each time the weapon is kept).
+    4. It attacks: a brawl attack, or a throw.
+    5. If its team is poisoned, it takes poison damage.
+    6. Its init moves forward by the weapon's tempo x its speed factor.
+
+* The target is picked at random from the enemy team. Pets can be targets.
+  A netted enemy is avoided if there is any other target.
+
+* Fights end when every non-pet, non-support brute on one team is dead.
+  The project's fight player has a patched check for this so that 2v2 and
+  larger teams work.
+
+* MEASURED: 300 simulated fights between level-11 brutes, with ids drawn
+  from two ranges and random level-up choices.
+  The results were 165 wins for team 0 and 135 for team 1, with no draws.
+  The shortest fight had 10 recorded events and the longest 141. The
+  average was about 56. (This only tells you what a random pair of
+  mid-level brutes looks like, not anything about balance.)
+
+
+===============================================================================
+13. HITS, DODGES, BLOCKS, COMBOS AND COUNTERS
+===============================================================================
+
+For every attack, the engine does these checks in this order:
+
+  1. COUNTER (before the attack even happens)
+     The defender gets a chance of
+         (defender counter + defender reach - attacker reach) x 10%
+     to hit first. So a long weapon (lance, halberd, whip) beats a short one
+     at close range. This is why reach matters.
+
+  2. DAMAGE is rolled (section 6).
+
+  3. PARRY: the defender blocks with probability
+         (defender parry + weapon parry - attacker weapon piercing) %.
+     A block makes the damage 0.
+
+  4. DODGE: the defender dodges with probability
+         defender dodge + weapon dodge + agility swing
+         - attacker accuracy - attacker weapon accuracy
+     capped at 90%. A dodge overrides a block, and shows as damage -1 in the
+     history.
+
+  5. DISARM: if damage got through, the attacker may knock away the
+     defender's weapon with probability
+         (attacker disarm + weapon disarm) %.
+     The defender is left with bare hands. If the defender has a shield, a
+     separate roll on a wider scale (out of 300) may knock the shield off.
+
+  6. HIT: the defender loses health.
+
+  7. COMBO: the attacker may attack again (section 6, agility).
+
+  8. RIPOSTE: afterwards, the defender may strike back with probability
+         defender riposte + weapon riposte  (percent).
+
+Other facts:
+* A netted fighter can't parry or dodge.
+* The history records every attack with its damage, and whether it was a
+  disarm, a destroyed weapon or a broken shield. The project turns that log
+  into per-brute statistics.
+
+
+===============================================================================
+14. TALENTS, THE SUPPORT BRUTE AND OTHER TEAM TRICKS
+===============================================================================
+
+The fight engine reads three extra settings per team ("team properties").
+One of them is a whole extra fighter. As the next part explains, each of the
+three is the in-fight half of a talent.
+
+SUPPORT BRUTE (property name _st)   <- the Backup talent
+  A team can hold a reserve brute that is not on the field at the start.
+  Each time a fighter on that team acts, there is a chance equal to the
+  fraction of health that fighter has lost that the reserve arrives.
+    - The more hurt your fighter, the more likely help arrives.
+    - The support brute stays for only 280 time units.
+    - While present, damage to it doesn't reduce its health but its
+      remaining time, at 5 time units per point of damage.
+    - It leaves when its time is up, and a support brute dying doesn't count
+      as a team member dying for the "who is alive" check.
+  The project's Lab has fields to edit this brute.
+
+POISON (property name _poi)   <- the Chef talent
+  If a team is poisoned, each action of a fighter on that team costs it
+  ceil(maximum health / 50) health, while the enemy is still alive.
+  That is 2% of maximum health per action. Medicine on that team cures it.
+
+SABOTAGE (property name _sab)   <- the Saboteur talent
+  If set, one random weapon of every brute on the team is rigged. When the
+  brute draws it, the weapon breaks on the spot: it is removed, the brute
+  falls back to bare hands, and the turn is wasted (100 time units).
+
+HOW THE TALENTS FIT TOGETHER
+The talents work "out of combat": the website decides, before the fight
+starts, whether a team gets one of the settings above. The fight engine only
+carries out the result. The descriptions below come from the project owner,
+who knows the original game. I matched each one to the engine's code.
+
+  Talent (name in     Where it acts      What it does
+  the game)
+  Hyperactive         Outside fights     Raises the number of deaths a brute
+                                         can suffer in a day before it can
+                                         no longer train, from 3 to 4. Before
+                                         the talent, a brute that died 3
+                                         times had its training for the day
+                                         over.
+  Spy                 Outside fights     Lets you look into opponents' cells
+                                         (their brute pages).
+  Backup              In the fight       Lets the brute act as support for
+                                         your other brutes that are higher
+                                         level. This matches the support
+                                         brute above.
+  Chef                In the fight       Poisons the opponent: it loses 2% of
+                                         its health per attack until its
+                                         player drinks the tragic potion
+                                         (I take this to be the Medecine
+                                         super). This matches the poison
+                                         setting above.
+  Saboteur            In the fight       Sabotages a weapon when the opponent
+                                         takes it out. This matches the
+                                         sabotage setting above.
+
+  * The last three (Backup, Chef, Saboteur) each cost 1 death per day to
+    activate. The owner's description doesn't say more, so I won't guess
+    how this interacts with Hyperactive's fourth death.
+
+What I checked in the code:
+  * The 2% figure for Chef is exact: the poison damage is
+    ceil(maximum health / 50), and 1/50 is 2%.
+  * The engine has five talents: HYPERACTIVE, COOK, SPY, SABOTEUR and
+    STRIKER. The owner's list has five too, with "Chef" for COOK and
+    "Backup" in place of STRIKER. By elimination, I believe STRIKER is the
+    engine's name for Backup, since support is the one fight setting left
+    over. That is my inference; the code itself never links the two.
+  * Hyperactive and Spy have no trace in the fight engine, which fits them
+    working outside combat.
+  * Talent weights in the reward table are 3 each (Hyperactive, Cook, Spy,
+    Saboteur) and 5 for Striker.
+  * Death counts and daily training limits are not part of this project's
+    Classic mode. Classic uses 10 training fights per day and no death
+    limit (README.md), so the talents' out-of-combat effects do not exist
+    here. Only the fight half is supported, through the Lab's team
+    settings.
+
+
+===============================================================================
+15. LEVEL LIMITS AND WHAT A LEVEL 500 BRUTE LOOKS LIKE
+===============================================================================
+
+* This project allows up to level 500 (499 level-ups), enforced by its own
+  validation code. The engine itself has no cap.
+
+* MEASURED: brute id 1 taken to 499 level-ups, always choosing option 0:
+    strength 477, agility 526, speed 423, life stat 379, health 3,072
+    16 weapons
+     6 supers
+     3 pets (two dogs and a panther)
+    22 permanent bonuses (including Untouchable, Merciless, Armor and
+        Ballerina)
+     1 talent (Hyperactive)
+  In other words, after level 80 or so, a brute has collected nearly every
+  reward its destiny allows, and level-ups become almost entirely stat gain.
+
+* MEASURED: among ids 1 to 5,000 taken to level 101 with option 0, the
+  most loaded was id 261 with 17 weapons, 5 supers, 3 dogs, 16 permanent
+  bonuses and a talent: 42 rewards in all.
+
+
+===============================================================================
+16. SMALL DETAILS WORTH KNOWING
+===============================================================================
+
+* Brute names in Classic opponents are just their ids. The id decides
+  everything about the brute, so the name is a convenient label.
+
+* The fight engine writes a history of events, and the animation plays that
+  history. Event types in the code include: Attack, ThrowAttack, Steal,
+  Grab, Bomb, Medecine, Net, Hypno, Escape, MoveTo, MoveBack, Death, Eat,
+  Poison, Downpour, and "FxResistDamage" (shown when Increvable caps a hit).
+  There are 23 event kinds in total.
+
+* Stat numbers are truncated to whole numbers when multipliers are applied.
+  A x1.5 on 11 strength gives 16, not 16.5.
+
+* Dying to poison is possible: poison damage is applied by the same hit
+  function as every other attack.
+
+* A disarm removes the weapon from the victim's collection, not just from
+  their hand. It is gone for the rest of the fight.
+
+* A thief steals and then keeps the weapon for the rest of the fight.
+
+* A hit on a netted fighter frees it, and then the fighter is delayed by 50
+  time units before acting.
+
+* Probabilities are rolled with the same generator in a fixed order. This
+  is why fights replay identically, and why changing one early decision (an
+  extra weapon, a different pet) can change the whole fight afterwards.
+
+
+===============================================================================
+17. THINGS THE CODE DOES NOT SHOW
+===============================================================================
+
+To keep this honest, here are things I looked for and could not find:
+
+* TALENTS (out of combat). Hyperactive's extra death and Spy's cell
+  viewing, and the rule that Backup, Chef and Saboteur cost a death per day,
+  happened on the original website. None of that is in the files this
+  project has. Section 14 gives the details the owner supplied.
+
+* The meaning of the "stance" id. The engine stores it, but I can't see
+  what it changes.
+
+* How the original website matched opponents, ranked players, or scheduled
+  fights. Those parts are not in the recovered engine. This project's
+  Classic mode uses its own rules for them (README.md).
+
+* Balance. The numbers are real, but I haven't tried to rank builds. The
+  measured fight results above are samples, not a verdict on what is
+  strongest.
+
+===============================================================================
+                                   END
+===============================================================================
